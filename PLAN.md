@@ -347,48 +347,48 @@ The owner wants staff, not the system, to decide when the room is full.
 ## 9. Phases (execute in order; tick when done)
 
 ### Phase 0 — Scaffold
-- [ ] Next.js + TS + Tailwind, lint/format/type-check, Vitest
-- [ ] `config/event.config.ts`, `.env.example`, `HUMAN_TODO.md`, `DECISIONS.md`
-- [ ] Thai font, base layout, brand tokens, mobile-first shell
+- [x] Next.js + TS + Tailwind, lint/format/type-check, Vitest
+- [x] `config/event.config.ts`, `.env.example`, `HUMAN_TODO.md`, `DECISIONS.md`
+- [x] Thai font, base layout, brand tokens, mobile-first shell
 
 ### Phase 1 — Database and payment logic
-- [ ] Migrations for all tables, enums, indexes; RLS enabled everywhere
-- [ ] `venue_status` table; `create_order` (rejects when full), `set_venue_full`, `approve_payment`, `reject_payment`, `recompute_order_status`, `issue_tickets` (idempotent), `check_in_ticket`
-- [ ] Unit/concurrency tests from sections 8.1–8.3 pass
+- [x] Migrations for all tables, enums, indexes; RLS enabled everywhere
+- [x] `venue_status` table; `create_order` (rejects when full), `set_venue_full`, `approve_payment`, `reject_payment`, `recompute_order_status`, `issue_tickets` (idempotent), `check_in_ticket`
+- [x] Unit/concurrency tests from sections 8.1–8.3 pass
 
 ### Phase 2 — Buyer ordering and checkout
-- [ ] Landing page and `/buy` form (validation, consent, honeypot)
-- [ ] Order creation API (server-side price, sanity ceiling)
-- [ ] `/checkout/[code]` with countdown, PromptPay QR for the remaining amount, bank details
-- [ ] Venue-full banner and disabled CTA on landing and `/buy` (re-fetch every 10 s, `no-store`); API rejects with `venue_full`
+- [x] Landing page and `/buy` form (validation, consent, honeypot)
+- [x] Order creation API (server-side price, sanity ceiling)
+- [x] `/checkout/[code]` with countdown, PromptPay QR for the remaining amount, bank details
+- [x] Venue-full banner and disabled CTA on landing and `/buy` (re-fetch every 10 s, `no-store`); API rejects with `venue_full`
 
 ### Phase 3 — Slips and order page
-- [ ] Slip upload API (content sniffing, size, hash, private storage, rate limit)
-- [ ] Multiple slips per order; paid/remaining display
-- [ ] `/orders/[code]` status page and "find my order" email resend
+- [x] Slip upload API (content sniffing, size, hash, private storage, rate limit)
+- [x] Multiple slips per order; paid/remaining display
+- [x] `/orders/[code]` status page and "find my order" email resend
 
 ### Phase 4 — Admin
-- [ ] Staff auth, roles, audit log
-- [ ] "รอตรวจสลิป" queue with 5-second polling, badge, optional beep
-- [ ] Slip review screen: approve (with amount correction), reject, duplicate warning, already-reviewed handling
-- [ ] Search/filters, cancel, revert scan, dashboard, CSV export
-- [ ] Venue-full switch in admin and staff headers (6.7), with confirmation when turning on
+- [x] Staff auth, roles, audit log
+- [x] "รอตรวจสลิป" queue with 5-second polling, badge, optional beep
+- [x] Slip review screen: approve (with amount correction), reject, duplicate warning, already-reviewed handling
+- [x] Search/filters, cancel, revert scan, dashboard, CSV export
+- [x] Venue-full switch in admin and staff headers (6.7), with confirmation when turning on
 
 ### Phase 5 — Email and tickets
-- [ ] `lib/email.ts` + all Thai templates; resend action
-- [ ] Ticket QR rendering on the order page and in the paid email; save-image buttons
+- [x] `lib/email.ts` + all Thai templates; resend action
+- [x] Ticket QR rendering on the order page and in the paid email; save-image buttons
 
 ### Phase 6 — Staff scanner
-- [ ] Camera scanner page, atomic check-in, banners, debounce
-- [ ] Manual search fallback
-- [ ] Scanner tests (8.5)
+- [x] Camera scanner page, atomic check-in, banners, debounce
+- [x] Manual search fallback
+- [x] Scanner tests (8.5)
 
 ### Phase 7 — Hardening and handoff
-- [ ] Security headers, rate limits, `/privacy` page
-- [ ] All tests in section 8 pass; manual QA checklist written
-- [ ] `README.md`: local setup, env vars, Supabase setup, Vercel deploy, admin user creation, event-night runbook
-- [ ] `HUMAN_TODO.md` complete and ordered
-- [ ] Final review against section 11
+- [x] Security headers, rate limits, `/privacy` page
+- [x] All tests in section 8 pass; manual QA checklist written
+- [x] `README.md`: local setup, env vars, Supabase setup, Vercel deploy, admin user creation, event-night runbook
+- [x] `HUMAN_TODO.md` complete and ordered
+- [x] Final review against section 11
 
 ---
 
