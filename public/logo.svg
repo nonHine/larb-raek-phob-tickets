@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <rect width="120" height="120" rx="28" fill="#8F1D2D" />
+  <circle cx="60" cy="60" r="44" fill="#741725" opacity="0.6" />
+  <text x="60" y="68" font-family="'Noto Sans Thai', sans-serif" font-size="34" font-weight="bold" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle">
+    ลาบ
+  </text>
+  <text x="60" y="94" font-family="'Noto Sans Thai', sans-serif" font-size="10" font-weight="bold" fill="#FDF2F3" text-anchor="middle" letter-spacing="1">
+    แรกพบ
+  </text>
+</svg>

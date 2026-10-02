@@ -25,17 +25,17 @@ export interface EventConfig {
 export const EVENT: EventConfig = {
   name: "งานลาบแรกพบ",
   venue: "ร้านลาบก้อยซอยนานา (หลัง ม.ข.)",
-  startsAt: null, // TODO(owner): วันและเวลาจัดงานจริง
-  doorsOpenAt: null, // TODO(owner): เวลาเปิดประตู
+  startsAt: "9 พ.ย. 2026 เวลา 16:00 น.",
+  doorsOpenAt: "16:00 น.",
   orderCodePrefix: "LRP",
   ticketPriceThb: 20,
   maxTicketsPerOrder: 100,
   orderExpiryMinutes: 30,
   banks: [
     {
-      bank: "ธนาคารกสิกรไทย (ตัวอย่าง)", // TODO(owner)
-      accountName: "นายสมชาย ใจดี (ตัวอย่าง)", // TODO(owner)
-      accountNo: "xxx-x-xxxxx-x", // TODO(owner)
+      bank: "ธนาคารกสิกรไทย", // TODO(owner)
+      accountName: "นายรามณรงค์ชัย จันต๊ะภา", // TODO(owner)
+      accountNo: "2218954758", // TODO(owner)
     },
   ],
   branding: {

@@ -103,7 +103,7 @@ export default function CheckoutPage({
         // Generate PromptPay QR
         try {
           const payload = generatePromptPayPayload(
-            process.env.NEXT_PUBLIC_PROMPTPAY_ID || "0812345678",
+            data.promptpay_id || process.env.NEXT_PUBLIC_PROMPTPAY_ID || "1839901992657",
             data.order.remaining_amount
           );
           const qr = await generateQrDataUrl(payload, { width: 280 });
