@@ -599,5 +599,9 @@ export class OrderEngine {
   }
 }
 
-// Global engine instance for runtime
-export const engine = new OrderEngine();
+// Global engine instance with globalThis persistence for Next.js dev server hot-reloading
+const globalForEngine = globalThis as unknown as { engine?: OrderEngine };
+export const engine = globalForEngine.engine ?? new OrderEngine();
+if (process.env.NODE_ENV !== "production") {
+  globalForEngine.engine = engine;
+}
