@@ -423,4 +423,78 @@ describe("Payment & Ticket State Machine Engine", () => {
       expect(order3Res.success).toBe(true);
     });
   });
+
+  // --- 8.4 Order Recovery & Attendee Search ---
+  describe("8.4 Order Recovery & Attendee Search", () => {
+    it("finds orders by 10-digit phone number (with formatting)", async () => {
+      const orderRes = await engine.createOrder({
+        buyer_name: "สมชาย รักสงบ",
+        phone: "0819998888",
+        email: "somchai@test.com",
+        quantity: 2,
+      });
+      expect(orderRes.success).toBe(true);
+
+      // Search by exact phone
+      const found = await engine.getOrdersByPhone("0819998888");
+      expect(found.length).toBe(1);
+      expect(found[0].buyer_name).toBe("สมชาย รักสงบ");
+
+      // Search with dashes
+      const foundWithDash = await engine.getOrdersByPhone("081-999-8888");
+      expect(foundWithDash.length).toBe(1);
+      expect(foundWithDash[0].code).toBe(found[0].code);
+
+      // Search non-existent
+      const notFound = await engine.getOrdersByPhone("0899999999");
+      expect(notFound.length).toBe(0);
+    });
+
+    it("searches orders and tickets by keyword for door check-in", async () => {
+      const orderRes = await engine.createOrder({
+        buyer_name: "กิตติพงษ์ ใจงาม",
+        phone: "0823334444",
+        email: "kittipong@test.com",
+        quantity: 1,
+      });
+      expect(orderRes.success).toBe(true);
+      if (!orderRes.success) return;
+
+      // Add & approve payment so ticket is issued
+      const p = await engine.addPayment({
+        order_id: orderRes.order.id,
+        slip_path: "slip.png",
+        slip_sha256: "hash_kitti",
+        amount_thb: 20,
+        transferred_at: new Date().toISOString(),
+        to_bank: "KBANK",
+        payer_name_or_last4: "4444",
+      });
+      await engine.approvePayment({ payment_id: p.id, reviewer_id: "admin" });
+
+      // Search order by name
+      const searchByName = await engine.searchOrders("กิตติพงษ์");
+      expect(searchByName.length).toBe(1);
+      expect(searchByName[0].code).toBe(orderRes.order.code);
+
+      // Search order by phone
+      const searchByPhone = await engine.searchOrders("0823334444");
+      expect(searchByPhone.length).toBe(1);
+
+      // Search tickets by holder name
+      const ticketsByName = await engine.searchTickets("กิตติพงษ์");
+      expect(ticketsByName.length).toBe(1);
+
+      // Check-in ticket
+      const checkin = await engine.checkInTicket(ticketsByName[0].code, "staff-search");
+      expect(checkin.success).toBe(true);
+
+      // Duplicate check-in rejected
+      const dupCheckin = await engine.checkInTicket(ticketsByName[0].code, "staff-search");
+      expect(dupCheckin.success).toBe(false);
+      if (!dupCheckin.success) {
+        expect(dupCheckin.error).toBe("already_checked_in");
+      }
+    });
+  });
 });

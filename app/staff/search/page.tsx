@@ -32,6 +32,10 @@ export default function StaffSearchPage() {
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [checkingInId, setCheckingInId] = useState<string | null>(null);
+  const [checkInNotice, setCheckInNotice] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,6 +43,7 @@ export default function StaffSearchPage() {
 
     setLoading(true);
     setHasSearched(true);
+    setCheckInNotice(null);
 
     try {
       const res = await fetch(
@@ -57,6 +62,7 @@ export default function StaffSearchPage() {
 
   const handleCheckIn = async (ticket: TicketSearchResult) => {
     setCheckingInId(ticket.ticket_id);
+    setCheckInNotice(null);
     try {
       const res = await fetch("/api/staff/scan", {
         method: "POST",
@@ -67,8 +73,13 @@ export default function StaffSearchPage() {
         }),
       });
 
+      const data = await res.json();
+
       if (res.ok) {
-        // Update local status
+        setCheckInNotice({
+          type: "success",
+          message: `เช็กอินสำเร็จ: ${ticket.holder_name} (ออเดอร์ ${ticket.order_code}) ให้ wristband เรียบร้อย`,
+        });
         setResults((prev) =>
           prev.map((t) =>
             t.ticket_id === ticket.ticket_id
@@ -80,9 +91,30 @@ export default function StaffSearchPage() {
               : t
           )
         );
+      } else {
+        setCheckInNotice({
+          type: "error",
+          message: data.message || "ไม่สามารถเช็กอินบัตรใบนี้ได้",
+        });
+        if (data.checked_in_at) {
+          setResults((prev) =>
+            prev.map((t) =>
+              t.ticket_id === ticket.ticket_id
+                ? {
+                    ...t,
+                    ticket_status: "checked_in",
+                    checked_in_at: data.checked_in_at,
+                  }
+                : t
+            )
+          );
+        }
       }
     } catch {
-      // keep
+      setCheckInNotice({
+        type: "error",
+        message: "เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่",
+      });
     } finally {
       setCheckingInId(null);
     }
@@ -127,6 +159,23 @@ export default function StaffSearchPage() {
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "ค้นหา"}
           </button>
         </form>
+
+        {checkInNotice && (
+          <div
+            className={`p-3.5 rounded-xl border text-xs flex items-center gap-2 ${
+              checkInNotice.type === "success"
+                ? "bg-status-success-subtle border-status-success/30 text-status-success font-semibold"
+                : "bg-status-danger-subtle border-status-danger/30 text-status-danger font-semibold"
+            }`}
+          >
+            {checkInNotice.type === "success" ? (
+              <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+            ) : (
+              <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            )}
+            <span>{checkInNotice.message}</span>
+          </div>
+        )}
 
         {loading ? (
           <div className="flex flex-col items-center justify-center p-12 gap-2 text-content-muted">
