@@ -61,6 +61,7 @@ export async function GET(
         pending_amount: pendingAmount,
         remaining_amount: remainingAmount,
       },
+      promptpay_id: process.env.PROMPTPAY_ID || process.env.NEXT_PUBLIC_PROMPTPAY_ID || "081-234-5678",
       payments: payments.map((p) => ({
         id: p.id,
         amount_thb: p.amount_thb,

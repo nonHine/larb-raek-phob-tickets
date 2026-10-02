@@ -56,6 +56,12 @@ export default function LandingPage() {
                 <span className="text-left">{EVENT.startsAt}</span>
               </div>
             )}
+            {EVENT.doorsOpenAt && (
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-brand flex-shrink-0" />
+                <span className="text-left">ประตูเปิด {EVENT.doorsOpenAt}</span>
+              </div>
+            )}
           </div>
 
           {/* Pricing Highlight */}
