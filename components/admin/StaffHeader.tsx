@@ -201,6 +201,18 @@ export function StaffHeader({
               <QrCode className="w-3.5 h-3.5" />
               <span>สแกนบัตร</span>
             </Link>
+
+            <button
+              type="button"
+              onClick={async () => {
+                await fetch("/api/auth/staff-pin", { method: "DELETE" });
+                window.location.href = "/admin/login";
+              }}
+              title="ออกจากระบบ"
+              className="p-1.5 rounded-lg text-content-muted hover:text-status-danger hover:bg-status-danger/10 transition-colors"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
           </nav>
         </div>
       </header>

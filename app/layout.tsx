@@ -30,7 +30,7 @@ export default function RootLayout({
   return (
     <html lang="th" className={notoSansThai.variable}>
       <body className="min-h-screen bg-surface-subtle text-content antialiased flex flex-col items-center">
-        <main className="w-full max-w-lg min-h-screen bg-surface flex flex-col shadow-sm sm:border-x sm:border-border">
+        <main className="w-full max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl min-h-screen bg-surface flex flex-col shadow-sm sm:border-x sm:border-border transition-all">
           {children}
         </main>
       </body>
