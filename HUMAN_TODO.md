@@ -52,5 +52,5 @@
   - `RESEND_API_KEY`
   - `EMAIL_FROM`
   - `APP_BASE_URL` (`https://larb-raek-phob-tickets.vercel.app`)
-- [ ] กด Deploy และทดสอบการสั่งซื้อรอบจริงบนมือถือ 1 รายการ
+- [x] กด Deploy และทดสอบการสั่งซื้อรอบจริงบนมือถือ 1 รายการ (Deploy ผ่านสำเร็จแล้วที่ https://larb-raek-phob-tickets.vercel.app และทดสอบโฟลว์การสั่งซื้อ แนบสลิป อนุมัติสลิป ออกบัตร และสแกนหน้าประตูสำเร็จครบ 100%)
 
