@@ -15,6 +15,9 @@ import {
   Music,
   MapPin,
   Calendar,
+  Sparkles,
+  UtensilsCrossed,
+  Gift,
 } from "lucide-react";
 
 export default function LandingPage() {
@@ -43,23 +46,23 @@ export default function LandingPage() {
             {EVENT.branding.slogan}
           </p>
 
-          <div className="flex flex-col gap-2 w-full max-w-xs text-xs sm:text-sm text-content-muted bg-surface/80 border border-border/80 rounded-xl p-3 mb-5">
-            <div className="flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-brand flex-shrink-0" />
-              <span className="text-left font-medium text-content">
+          <div className="flex flex-col gap-2.5 w-full max-w-sm text-xs sm:text-sm text-content-muted bg-surface/90 border border-border/80 rounded-xl p-3.5 mb-5 shadow-sm">
+            <div className="flex items-start gap-2.5 text-left">
+              <MapPin className="w-4 h-4 text-brand flex-shrink-0 mt-0.5" />
+              <span className="font-medium text-content break-words leading-relaxed">
                 {EVENT.venue}
               </span>
             </div>
             {EVENT.startsAt && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5 text-left">
                 <Calendar className="w-4 h-4 text-brand flex-shrink-0" />
-                <span className="text-left">{EVENT.startsAt}</span>
+                <span className="font-medium text-content">{EVENT.startsAt}</span>
               </div>
             )}
             {EVENT.doorsOpenAt && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5 text-left">
                 <Clock className="w-4 h-4 text-brand flex-shrink-0" />
-                <span className="text-left">ประตูเปิด {EVENT.doorsOpenAt}</span>
+                <span>ประตูเปิด {EVENT.doorsOpenAt}</span>
               </div>
             )}
           </div>
@@ -92,6 +95,72 @@ export default function LandingPage() {
               <ChevronRight className="w-4 h-4" />
             </Link>
           )}
+        </div>
+
+        {/* Event Highlights Section */}
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-brand" />
+            <h2 className="text-base font-bold text-content">
+              ไฮไลต์พิเศษภายในงาน
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Card 1: Music */}
+            <div className="p-4 rounded-2xl border border-border bg-surface flex flex-col gap-2.5 shadow-sm hover:border-brand/30 transition-colors">
+              <div className="w-9 h-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
+                <Music className="w-5 h-5" />
+              </div>
+              <div className="flex flex-col">
+                <span className="font-bold text-content text-sm">
+                  ดนตรีสดสุดมันส์
+                </span>
+                <span className="text-xs font-semibold text-brand mt-0.5">
+                  พบกับ sunny cat
+                </span>
+                <span className="text-xs text-content-muted mt-1 leading-relaxed">
+                  จากคณะศิลปกรรมศาสตร์ มข. จัดเต็มดนตรีสาย Pop • Rock • Jazz และเซ็ต DJ
+                </span>
+              </div>
+            </div>
+
+            {/* Card 2: Food */}
+            <div className="p-4 rounded-2xl border border-border bg-surface flex flex-col gap-2.5 shadow-sm hover:border-brand/30 transition-colors">
+              <div className="w-9 h-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
+                <UtensilsCrossed className="w-5 h-5" />
+              </div>
+              <div className="flex flex-col">
+                <span className="font-bold text-content text-sm">
+                  อาหารอีสานรสเด็ด
+                </span>
+                <span className="text-xs font-semibold text-brand mt-0.5">
+                  เมนูพิเศษ “ลาบเสือคั่ว”
+                </span>
+                <span className="text-xs text-content-muted mt-1 leading-relaxed">
+                  ลิ้มลองอาหารตลอดงาน ทั้งลาบเสือคั่ว ส้มตำ และอาหารอีสานรสแซ่บ
+                </span>
+              </div>
+            </div>
+
+            {/* Card 3: Activities & Venue */}
+            <div className="p-4 rounded-2xl border border-border bg-surface flex flex-col gap-2.5 shadow-sm hover:border-brand/30 transition-colors">
+              <div className="w-9 h-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
+                <Gift className="w-5 h-5" />
+              </div>
+              <div className="flex flex-col">
+                <span className="font-bold text-content text-sm">
+                  กิจกรรมและของรางวัล
+                </span>
+                <span className="text-xs font-semibold text-brand mt-0.5">
+                  ลุ้นรับของรางวัลตลอดค่ำคืน
+                </span>
+                <span className="text-xs text-content-muted mt-1 leading-relaxed">
+                  ร่วมสนุกลุ้นของรางวัล พร้อมที่จอดรถสะดวกสบายตรงข้าม Cafe Amazon
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* 3-Step Guide */}

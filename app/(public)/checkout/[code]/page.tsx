@@ -174,7 +174,8 @@ export default function CheckoutPage({
   };
 
   const handleCopyBank = (no: string) => {
-    navigator.clipboard.writeText(no);
+    // Strip hyphens so the copied number pastes cleanly into all banking apps
+    navigator.clipboard.writeText(no.replace(/\D/g, "") || no);
     setCopiedBank(true);
     setTimeout(() => setCopiedBank(false), 2000);
   };

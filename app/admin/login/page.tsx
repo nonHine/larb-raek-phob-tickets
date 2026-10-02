@@ -92,7 +92,7 @@ function PinLoginForm() {
         <div className="w-16 h-16 rounded-2xl overflow-hidden border border-border shadow-md bg-white p-1 mb-1">
           <Image
             src="/Logo.jpg"
-            alt="งานลาบแรกพบ"
+            alt="งานลาบแรกพบ ครั้งที่ 2"
             width={64}
             height={64}
             className="w-full h-full object-cover rounded-xl"
@@ -103,7 +103,7 @@ function PinLoginForm() {
           เข้าสู่ระบบสตาฟ & แอดมิน
         </h1>
         <p className="text-xs text-content-muted">
-          งานลาบแรกพบ • ร้านลาบก้อยซอยนานา
+          งานลาบแรกพบ ครั้งที่ 2 • ร้านลาบก้อยซอยนานา
         </p>
       </div>
 

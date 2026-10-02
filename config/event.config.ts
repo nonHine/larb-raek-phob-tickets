@@ -23,25 +23,25 @@ export interface EventConfig {
 }
 
 export const EVENT: EventConfig = {
-  name: "งานลาบแรกพบ",
-  venue: "ร้านลาบก้อยซอยนานา (หลัง ม.ข.)",
-  startsAt: "9 พ.ย. 2026 เวลา 16:00 น.",
-  doorsOpenAt: "16:00 น.",
+  name: "งานลาบแรกพบ ครั้งที่ 2",
+  venue: "ร้านลาบก้อยซอยนานา สาขาหลัง มข. (ตรงข้าม Cafe Amazon • มีที่จอดรถ)",
+  startsAt: "วันพุธที่ 7 ตุลาคม 2026 เวลา 19:00–00:00 น.",
+  doorsOpenAt: "19:00 น.",
   orderCodePrefix: "LRP",
   ticketPriceThb: 49,
   maxTicketsPerOrder: 100,
   orderExpiryMinutes: 30,
   banks: [
     {
-      bank: "ธนาคารกสิกรไทย", // TODO(owner)
-      accountName: "บัญชีทางการ งานลาบแรกพบ", // TODO(owner)
-      accountNo: "xxxxxxxxx", // TODO(owner)
+      bank: "ธนาคารกสิกรไทย",
+      accountName: "บัญชีทางการ งานลาบแรกพบ",
+      accountNo: "xxx-x-xxxxx-x",
     },
   ],
   branding: {
     primary: "#8F1D2D",
     primaryPressed: "#741725",
     logoPath: "/Logo.jpg",
-    slogan: "ดนตรีสด ลาบก้อย บรรยากาศเป็นกันเอง",
+    slogan: "ดนตรีสด Pop • Rock • Jazz • DJ ลาบก้อย บรรยากาศเป็นกันเอง",
   },
 };
