@@ -18,7 +18,7 @@ interface TicketSearchResult {
   ticket_id: string;
   ticket_code: string;
   holder_name: string;
-  ticket_status: "issued" | "checked_in" | "void";
+  ticket_status: "issued" | "checked_in" | "void" | "no_ticket";
   checked_in_at: string | null;
   order_code: string;
   buyer_name: string;
@@ -201,15 +201,23 @@ export default function StaffSearchPage() {
                     className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                       t.ticket_status === "checked_in"
                         ? "bg-status-success-subtle text-status-success"
-                        : t.ticket_status === "void"
+                        : t.ticket_status === "void" || t.order_status === "cancelled"
                         ? "bg-status-danger-subtle text-status-danger"
-                        : "bg-status-warning-subtle text-status-warning"
+                        : t.order_status === "under_review"
+                        ? "bg-status-warning-subtle text-status-warning"
+                        : t.order_status === "pending_payment"
+                        ? "bg-surface-subtle text-content border border-border"
+                        : "bg-status-success-subtle text-status-success"
                     }`}
                   >
                     {t.ticket_status === "checked_in"
                       ? "เข้างานแล้ว"
-                      : t.ticket_status === "void"
+                      : t.ticket_status === "void" || t.order_status === "cancelled"
                       ? "ยกเลิก"
+                      : t.order_status === "under_review"
+                      ? "รอตรวจสลิป"
+                      : t.order_status === "pending_payment"
+                      ? "รอชำระเงิน"
                       : "ยังไม่เข้างาน"}
                   </span>
                 </div>
@@ -219,7 +227,10 @@ export default function StaffSearchPage() {
                     {t.holder_name}
                   </span>
                   <span className="text-content-muted">
-                    เบอร์โทร: {t.phone} | รหัสบัตร: {t.ticket_code.slice(0, 12)}...
+                    เบอร์โทร: {t.phone}
+                    {t.ticket_code && t.ticket_code !== "-" && (
+                      <> | รหัสบัตร: {t.ticket_code.slice(0, 12)}...</>
+                    )}
                   </span>
                 </div>
 
@@ -250,6 +261,24 @@ export default function StaffSearchPage() {
                           minute: "2-digit",
                         })
                       : "ก่อนหน้านี้"}
+                  </div>
+                )}
+
+                {t.ticket_status === "no_ticket" && t.order_status === "pending_payment" && (
+                  <div className="p-2.5 rounded-lg bg-surface-subtle border border-border text-content text-[11px] leading-relaxed">
+                    ⚠️ <strong>ยังไม่ได้ชำระเงิน:</strong> ลูกค้าต้องไปที่หน้าชำระเงินและแนบสลิปก่อนเข้างาน
+                  </div>
+                )}
+
+                {t.ticket_status === "no_ticket" && t.order_status === "under_review" && (
+                  <div className="p-2.5 rounded-lg bg-status-warning-subtle text-status-warning text-[11px] leading-relaxed">
+                    ⏳ <strong>รอตรวจสลิป:</strong> มีสลิปที่แนบเข้ามาแล้ว อยู่ระหว่างรอแอดมินอนุมัติ
+                  </div>
+                )}
+
+                {(t.ticket_status === "void" || t.order_status === "cancelled") && (
+                  <div className="p-2.5 rounded-lg bg-status-danger-subtle text-status-danger text-[11px] leading-relaxed">
+                    ❌ <strong>ออเดอร์ถูกยกเลิก:</strong> ไม่สามารถออกสายรัดข้อมือได้
                   </div>
                 )}
               </div>
