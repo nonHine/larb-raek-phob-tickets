@@ -6,8 +6,16 @@ export function Navbar() {
   return (
     <header className="w-full bg-surface border-b border-border px-4 py-3 flex items-center justify-between sticky top-0 z-40">
       <Link href="/" className="flex items-center gap-2 group">
-        <div className="w-8 h-8 rounded-lg bg-brand flex items-center justify-center text-white font-bold text-sm shadow-sm group-hover:bg-brand-pressed transition-colors">
-          ลบ
+        <div className="w-8 h-8 rounded-lg bg-brand flex items-center justify-center text-white font-bold text-sm shadow-sm group-hover:bg-brand-pressed transition-colors overflow-hidden relative">
+          <img
+            src={EVENT.branding.logoPath}
+            alt={EVENT.name}
+            className="w-full h-full object-cover relative z-10"
+            onError={(e) => {
+              (e.currentTarget as HTMLElement).style.display = "none";
+            }}
+          />
+          <span className="absolute inset-0 flex items-center justify-center z-0">ลบ</span>
         </div>
         <div className="flex flex-col">
           <span className="font-semibold text-content text-base leading-tight">
