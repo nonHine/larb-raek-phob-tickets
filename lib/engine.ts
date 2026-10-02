@@ -309,6 +309,114 @@ export class OrderEngine {
     return order ? { ...order } : null;
   }
 
+  public async getOrdersByPhone(phone: string): Promise<Order[]> {
+    const cleanPhone = phone.replace(/[^0-9]/g, "").trim();
+    if (!cleanPhone) return [];
+
+    if (this.isSupabaseReady()) {
+      try {
+        const { data, error } = await supabaseAdmin
+          .from("orders")
+          .select("*")
+          .eq("phone", cleanPhone)
+          .order("created_at", { ascending: false });
+
+        if (data && !error) {
+          const list = data as Order[];
+          list.forEach((ord) => this.orders.set(ord.id, ord));
+          return list;
+        }
+      } catch (err) {
+        console.error("Supabase getOrdersByPhone error:", err);
+      }
+    }
+
+    const list: Order[] = [];
+    for (const order of this.orders.values()) {
+      if (order.phone.replace(/[^0-9]/g, "") === cleanPhone) {
+        list.push({ ...order });
+      }
+    }
+    return list.sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+  }
+
+  public async searchOrders(query: string): Promise<Order[]> {
+    const q = query.trim();
+    if (!q) return [];
+
+    if (this.isSupabaseReady()) {
+      try {
+        const { data, error } = await supabaseAdmin
+          .from("orders")
+          .select("*")
+          .or(`code.ilike.%${q}%,buyer_name.ilike.%${q}%,phone.ilike.%${q}%,email.ilike.%${q}%`)
+          .order("created_at", { ascending: false })
+          .limit(50);
+
+        if (data && !error) {
+          const list = data as Order[];
+          list.forEach((ord) => this.orders.set(ord.id, ord));
+          return list;
+        }
+      } catch (err) {
+        console.error("Supabase searchOrders error:", err);
+      }
+    }
+
+    const qLower = q.toLowerCase();
+    const list: Order[] = [];
+    for (const order of this.orders.values()) {
+      if (
+        order.code.toLowerCase().includes(qLower) ||
+        order.buyer_name.toLowerCase().includes(qLower) ||
+        order.phone.includes(q) ||
+        order.email.toLowerCase().includes(qLower)
+      ) {
+        list.push({ ...order });
+      }
+    }
+    return list.sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+  }
+
+  public async searchTickets(query: string): Promise<Ticket[]> {
+    const q = query.trim().toUpperCase();
+    if (!q) return [];
+
+    if (this.isSupabaseReady()) {
+      try {
+        const { data, error } = await supabaseAdmin
+          .from("tickets")
+          .select("*")
+          .or(`code.ilike.%${q}%,holder_name.ilike.%${q}%`)
+          .order("created_at", { ascending: false })
+          .limit(50);
+
+        if (data && !error) {
+          const list = data as Ticket[];
+          list.forEach((t) => this.tickets.set(t.id, t));
+          return list;
+        }
+      } catch (err) {
+        console.error("Supabase searchTickets error:", err);
+      }
+    }
+
+    const list: Ticket[] = [];
+    for (const t of this.tickets.values()) {
+      if (
+        t.code.toUpperCase().includes(q) ||
+        (t.holder_name && t.holder_name.toUpperCase().includes(q))
+      ) {
+        list.push({ ...t });
+      }
+    }
+    return list;
+  }
+
   // --- Payments / Slips ---
   public async addPayment(input: AddPaymentInput): Promise<Payment> {
     const releaseLock = await this.acquireLock(input.order_id);

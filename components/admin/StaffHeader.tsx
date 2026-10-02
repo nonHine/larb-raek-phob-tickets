@@ -13,6 +13,7 @@ import {
   CheckCircle,
   Clock,
   Loader2,
+  Search,
 } from "lucide-react";
 
 interface StaffHeaderProps {
@@ -25,10 +26,22 @@ export function StaffHeader({
   pendingCount = 0,
 }: StaffHeaderProps) {
   const pathname = usePathname();
+  const [currentRole, setCurrentRole] = useState<"admin" | "scanner">(staffRole);
   const [isFull, setIsFull] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [loadingToggle, setLoadingToggle] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/auth/staff-pin", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.authenticated && data?.role) {
+          setCurrentRole(data.role);
+        }
+      })
+      .catch(() => {});
+  }, [staffRole]);
 
   const fetchStatus = async () => {
     try {
@@ -129,92 +142,113 @@ export function StaffHeader({
           </button>
         </div>
 
-        {/* Navigation Bar */}
-        <div className="px-4 py-2.5 flex items-center justify-between">
-          <Link href="/admin" className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-brand text-white font-bold text-xs flex items-center justify-center">
-              สตาฟ
+        {/* Main Bar: Brand & Logout */}
+        <div className="px-4 py-2 flex items-center justify-between border-b border-border/60 bg-surface">
+          <Link href={currentRole === "admin" ? "/admin" : "/staff/scan"} className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-brand text-white font-bold text-xs flex items-center justify-center flex-shrink-0 shadow-sm">
+              {currentRole === "admin" ? "แอดมิน" : "สตาฟ"}
             </div>
-            <span className="font-bold text-sm text-content">{EVENT.name}</span>
+            <div className="flex flex-col">
+              <span className="font-bold text-xs sm:text-sm text-content leading-tight">
+                {EVENT.name}
+              </span>
+              <span className="text-[10px] text-content-muted leading-none">
+                {currentRole === "admin" ? "ระบบจัดการหลังบ้าน" : "ระบบสแกนบัตรหน้างาน"}
+              </span>
+            </div>
           </Link>
 
-          <nav className="flex items-center gap-1 sm:gap-2">
-            {staffRole === "admin" && (
-              <>
-                <Link
-                  href="/admin"
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors relative ${
-                    pathname === "/admin"
-                      ? "bg-brand text-white"
-                      : "text-content-muted hover:text-content hover:bg-surface-subtle"
-                  }`}
-                >
-                  <Clock className="w-3.5 h-3.5" />
-                  <span>รอตรวจ</span>
-                  {pendingCount > 0 && (
-                    <span
-                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                        pathname === "/admin"
-                          ? "bg-white text-brand"
-                          : "bg-brand text-white"
-                      }`}
-                    >
-                      {pendingCount}
-                    </span>
-                  )}
-                </Link>
-
-                <Link
-                  href="/admin/orders"
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1 transition-colors ${
-                    pathname === "/admin/orders"
-                      ? "bg-brand text-white"
-                      : "text-content-muted hover:text-content hover:bg-surface-subtle"
-                  }`}
-                >
-                  <ClipboardList className="w-3.5 h-3.5" />
-                  <span>ออเดอร์</span>
-                </Link>
-
-                <Link
-                  href="/admin/dashboard"
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1 transition-colors ${
-                    pathname === "/admin/dashboard"
-                      ? "bg-brand text-white"
-                      : "text-content-muted hover:text-content hover:bg-surface-subtle"
-                  }`}
-                >
-                  <BarChart3 className="w-3.5 h-3.5" />
-                  <span>แดชบอร์ด</span>
-                </Link>
-              </>
-            )}
-
-            <Link
-              href="/staff/scan"
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors ${
-                pathname === "/staff/scan"
-                  ? "bg-status-success text-white"
-                  : "bg-surface-subtle text-status-success hover:bg-status-success/10 border border-status-success/30"
-              }`}
-            >
-              <QrCode className="w-3.5 h-3.5" />
-              <span>สแกนบัตร</span>
-            </Link>
-
-            <button
-              type="button"
-              onClick={async () => {
-                await fetch("/api/auth/staff-pin", { method: "DELETE" });
-                window.location.href = "/admin/login";
-              }}
-              title="ออกจากระบบ"
-              className="p-1.5 rounded-lg text-content-muted hover:text-status-danger hover:bg-status-danger/10 transition-colors"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-            </button>
-          </nav>
+          <button
+            type="button"
+            onClick={async () => {
+              await fetch("/api/auth/staff-pin", { method: "DELETE" });
+              window.location.href = "/admin/login";
+            }}
+            title="ออกจากระบบ"
+            className="px-2.5 py-1.5 rounded-lg text-content-muted hover:text-status-danger hover:bg-status-danger/10 transition-colors flex items-center gap-1.5 text-xs font-medium border border-border/80"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">ออกจากระบบ</span>
+          </button>
         </div>
+
+        {/* Navigation Bar: Horizontally scrollable on mobile without wrapping */}
+        <nav className="px-3 py-1.5 flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden whitespace-nowrap bg-surface">
+          {currentRole === "admin" && (
+            <>
+              <Link
+                href="/admin"
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all flex-shrink-0 ${
+                  pathname === "/admin"
+                    ? "bg-brand text-white shadow-sm"
+                    : "text-content-muted hover:text-content hover:bg-surface-subtle"
+                }`}
+              >
+                <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>รอตรวจ</span>
+                {pendingCount > 0 && (
+                  <span
+                    className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                      pathname === "/admin"
+                        ? "bg-white text-brand"
+                        : "bg-brand text-white"
+                    }`}
+                  >
+                    {pendingCount}
+                  </span>
+                )}
+              </Link>
+
+              <Link
+                href="/admin/orders"
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all flex-shrink-0 ${
+                  pathname === "/admin/orders"
+                    ? "bg-brand text-white shadow-sm"
+                    : "text-content-muted hover:text-content hover:bg-surface-subtle"
+                }`}
+              >
+                <ClipboardList className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>ออเดอร์</span>
+              </Link>
+
+              <Link
+                href="/admin/dashboard"
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all flex-shrink-0 ${
+                  pathname === "/admin/dashboard"
+                    ? "bg-brand text-white shadow-sm"
+                    : "text-content-muted hover:text-content hover:bg-surface-subtle"
+                }`}
+              >
+                <BarChart3 className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>แดชบอร์ด</span>
+              </Link>
+            </>
+          )}
+
+          <Link
+            href="/staff/scan"
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all flex-shrink-0 ${
+              pathname === "/staff/scan"
+                ? "bg-status-success text-white shadow-sm"
+                : "bg-surface-subtle text-status-success hover:bg-status-success/10 border border-status-success/30"
+            }`}
+          >
+            <QrCode className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>สแกนบัตร</span>
+          </Link>
+
+          <Link
+            href="/staff/search"
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all flex-shrink-0 ${
+              pathname === "/staff/search"
+                ? "bg-brand text-white shadow-sm"
+                : "text-content-muted hover:text-content hover:bg-surface-subtle"
+            }`}
+          >
+            <Search className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>ค้นหาบัตร</span>
+          </Link>
+        </nav>
       </header>
 
       {/* Confirmation Modal for turning venue full ON */}
