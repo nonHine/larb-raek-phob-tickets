@@ -26,8 +26,9 @@ export async function POST(req: Request) {
     }
 
     let matchingOrders: Order[] = [];
+    const hasFullVerification = Boolean(codeInput && emailInput);
 
-    // Path 1: Search by phone number (primary self-recovery method)
+    // Path 1: Search by phone number (initiates safe email dispatch, returns masked summary)
     if (cleanPhone) {
       if (!/^0[0-9]{9}$/.test(cleanPhone)) {
         return NextResponse.json(
@@ -48,7 +49,7 @@ export async function POST(req: Request) {
         return true;
       });
     } else if (codeInput && emailInput) {
-      // Path 2: Search by Code + Email
+      // Path 2: Search by Code + Email (proves ownership, permits direct access URL)
       const order = await engine.getOrderByCode(codeInput);
       if (order && order.email.toLowerCase() === emailInput) {
         matchingOrders = [order];
@@ -67,34 +68,37 @@ export async function POST(req: Request) {
       );
     }
 
-    // Await delivery dispatch so Vercel can finish the email request before
-    // the function exits. Only paid orders with issued tickets receive the ticket QR email.
+    // Await delivery dispatch so Vercel can finish the email request before the function exits.
+    // For phone lookup, this ensures the ticket magic link is securely sent to the customer's actual inbox.
     const emailResults = await Promise.all(
       matchingOrders.map(async (ord) => {
-        if (!ord.email || ord.status !== "paid") {
+        if (!ord.email) {
           return [ord.id, false] as const;
         }
 
         try {
-          const tickets = await engine.getTicketsForOrder(ord.id);
-          if (!tickets || tickets.length === 0) {
-            return [ord.id, false] as const;
-          }
+          if (ord.status === "paid") {
+            const tickets = await engine.getTicketsForOrder(ord.id);
+            if (!tickets || tickets.length === 0) {
+              return [ord.id, false] as const;
+            }
 
-          const result: any = await sendEmail({
-            to: ord.email,
-            subject: "",
-            template: "paid",
-            data: {
-              buyer_name: ord.buyer_name,
-              order_code: ord.code,
-              access_token: ord.access_token,
-              quantity: ord.quantity,
-              tickets,
-            },
-          });
-          const sent = typeof result === "boolean" ? result : Boolean(result?.ok);
-          return [ord.id, sent] as const;
+            const result: any = await sendEmail({
+              to: ord.email,
+              subject: "",
+              template: "paid",
+              data: {
+                buyer_name: ord.buyer_name,
+                order_code: ord.code,
+                access_token: ord.access_token,
+                quantity: ord.quantity,
+                tickets,
+              },
+            });
+            const sent = typeof result === "boolean" ? result : Boolean(result?.ok);
+            return [ord.id, sent] as const;
+          }
+          return [ord.id, false] as const;
         } catch (err) {
           console.error("[EMAIL ERROR] Order recovery email failed", {
             order_code: ord.code,
@@ -106,26 +110,31 @@ export async function POST(req: Request) {
     );
     const emailSentByOrderId = new Map(emailResults);
 
-    // Format safe response for on-screen recovery
+    // SEC-002: Format safe response. If searched by phone only, NEVER return full access token URL.
     const formattedOrders = matchingOrders.map((ord) => {
       const isPaid = ord.status === "paid";
       const isUnderReview = ord.status === "under_review";
-      const targetUrl =
-        isPaid || isUnderReview
+      const targetUrl = hasFullVerification
+        ? isPaid || isUnderReview
           ? `/orders/${ord.code}?t=${ord.access_token}`
-          : `/checkout/${ord.code}?t=${ord.access_token}`;
+          : `/checkout/${ord.code}?t=${ord.access_token}`
+        : null;
 
       let statusLabel = "รอชำระเงิน";
       if (ord.status === "paid") statusLabel = "ชำระเงินเรียบร้อย (พร้อมเข้างาน)";
       else if (ord.status === "under_review") statusLabel = "รอตรวจสอบสลิป";
       else if (ord.status === "cancelled") statusLabel = "ยกเลิกคำสั่งซื้อ";
 
-      // Mask sensitive info for privacy
+      // Mask sensitive info for buyer privacy
       const maskedPhone = ord.phone.replace(/(\d{3})\d{3}(\d{4})/, "$1-XXX-$2");
       const maskedEmail = ord.email.replace(/(.{2})(.*)(@.*)/, "$1***$3");
+      const maskedCode = hasFullVerification
+        ? ord.code
+        : ord.code.replace(/^([A-Z]+-)([A-Za-z0-9]{2})[A-Za-z0-9]+([A-Za-z0-9]{2})$/, "$1$2***$3");
 
       return {
-        code: ord.code,
+        code: maskedCode,
+        raw_code: hasFullVerification ? ord.code : undefined,
         buyer_name: ord.buyer_name,
         masked_phone: maskedPhone,
         masked_email: maskedEmail,
@@ -139,11 +148,15 @@ export async function POST(req: Request) {
       };
     });
 
+    const responseMessage = hasFullVerification
+      ? `พบคำสั่งซื้อของคุณ ${formattedOrders.length} รายการ`
+      : `พบคำสั่งซื้อของคุณ ${formattedOrders.length} รายการ ระบบได้จัดส่งลิงก์ดูตั๋วไปยังอีเมล ${formattedOrders[0]?.masked_email} เรียบร้อยแล้ว`;
+
     return NextResponse.json({
       success: true,
       count: formattedOrders.length,
       orders: formattedOrders,
-      message: `พบคำสั่งซื้อของคุณ ${formattedOrders.length} รายการ`,
+      message: responseMessage,
     });
   } catch (err: any) {
     return NextResponse.json(

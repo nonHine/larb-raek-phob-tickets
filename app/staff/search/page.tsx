@@ -227,7 +227,7 @@ export default function StaffSearchPage() {
                     {t.holder_name}
                   </span>
                   <span className="text-content-muted">
-                    เบอร์โทร: {t.phone}
+                    เบอร์โทร: {t.phone.replace(/(\d{3})\d{3}(\d{4})/, "$1-XXX-$2")}
                     {t.ticket_code && t.ticket_code !== "-" && (
                       <> | รหัสบัตร: {t.ticket_code.slice(0, 12)}...</>
                     )}

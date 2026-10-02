@@ -104,7 +104,7 @@ export async function POST(req: Request) {
     // Success: clear rate limit record
     rateLimits.delete(ip);
 
-    const token = generateSessionToken(role);
+    const token = await generateSessionToken(role);
     const redirectUrl = role === "admin" ? "/admin" : "/staff/scan";
 
     const res = NextResponse.json({
@@ -138,7 +138,7 @@ export async function GET(req: Request) {
   const match = cookieHeader.match(/staff_session=([^;]+)/);
   const token = match ? match[1] : null;
 
-  const { valid, role } = parseSessionToken(token);
+  const { valid, role } = await parseSessionToken(token);
   if (!valid || !role) {
     return NextResponse.json({ authenticated: false });
   }

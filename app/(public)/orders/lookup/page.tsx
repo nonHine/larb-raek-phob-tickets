@@ -25,7 +25,8 @@ interface FoundOrder {
   total_thb: number;
   status: "pending_payment" | "under_review" | "paid" | "cancelled";
   status_label: string;
-  url: string;
+  url: string | null;
+  raw_code?: string;
   email_sent: boolean;
   created_at: string;
 }
@@ -311,25 +312,48 @@ export default function OrderLookupPage() {
                   </p>
                 )}
 
-                <Link
-                  href={ord.url}
-                  className={`w-full h-11 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm transition-all ${
-                    ord.status === "paid"
-                      ? "bg-status-success hover:bg-status-success/90 text-white"
-                      : ord.status === "under_review"
-                      ? "bg-brand hover:bg-brand-pressed text-white"
-                      : "bg-brand hover:bg-brand-pressed text-white"
-                  }`}
-                >
-                  <span>
-                    {ord.status === "paid"
-                      ? "เปิดดูตั๋วเข้างานของฉัน (QR Code)"
-                      : ord.status === "under_review"
-                      ? "ดูสถานะการตรวจสอบสลิป"
-                      : "ไปหน้าชำระเงินและแนบสลิป"}
-                  </span>
-                  <ExternalLink className="w-4 h-4" />
-                </Link>
+                {ord.url ? (
+                  <Link
+                    href={ord.url}
+                    className={`w-full h-11 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm transition-all ${
+                      ord.status === "paid"
+                        ? "bg-status-success hover:bg-status-success/90 text-white"
+                        : ord.status === "under_review"
+                        ? "bg-brand hover:bg-brand-pressed text-white"
+                        : "bg-brand hover:bg-brand-pressed text-white"
+                    }`}
+                  >
+                    <span>
+                      {ord.status === "paid"
+                        ? "เปิดดูตั๋วเข้างานของฉัน (QR Code)"
+                        : ord.status === "under_review"
+                        ? "ดูสถานะการตรวจสอบสลิป"
+                        : "ไปหน้าชำระเงินและแนบสลิป"}
+                    </span>
+                    <ExternalLink className="w-4 h-4" />
+                  </Link>
+                ) : (
+                  <div className="p-4 rounded-xl bg-brand/5 border border-brand/20 flex flex-col gap-2">
+                    <div className="flex items-start gap-2.5 text-xs text-content leading-relaxed">
+                      <Mail className="w-4 h-4 text-brand flex-shrink-0 mt-0.5" />
+                      <span>
+                        เพื่อความปลอดภัยของตั๋ว ระบบได้จัดส่งลิงก์ดูตั๋วไปยังอีเมล{" "}
+                        <strong className="font-semibold text-brand">{ord.masked_email}</strong> เรียบร้อยแล้ว กรุณาเปิดดูจากกล่องข้อความอีเมลของคุณ
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMode("code_email");
+                        setCode(ord.raw_code || "");
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }}
+                      className="text-xs text-brand hover:underline font-semibold text-left pt-1"
+                    >
+                      หรือสลับไปกรอกรหัสออเดอร์พร้อมอีเมล เพื่อเปิดดูตั๋วบนหน้านี้ทันที &rarr;
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
