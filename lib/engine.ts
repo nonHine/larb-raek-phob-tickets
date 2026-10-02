@@ -26,6 +26,7 @@ export interface AddPaymentInput {
   transferred_at: string;
   to_bank: string;
   payer_name_or_last4: string;
+  slip_url?: string | null;
 }
 
 export class OrderEngine {
@@ -202,6 +203,7 @@ export class OrderEngine {
         reviewed_by: null,
         reviewed_at: null,
         reject_reason: null,
+        slip_url: input.slip_url || null,
         created_at: new Date().toISOString(),
       };
 
