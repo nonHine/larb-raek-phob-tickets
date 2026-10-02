@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { EVENT } from "@/config/event.config";
 import { Search } from "lucide-react";
