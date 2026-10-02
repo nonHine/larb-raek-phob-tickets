@@ -1,4 +1,4 @@
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 import QRCode from "qrcode";
 import { EVENT } from "@/config/event.config";
 import { Ticket } from "@/lib/types";
@@ -7,6 +7,7 @@ export type EmailStatus =
   | "delivered_to_provider"
   | "config_missing"
   | "sender_rejected"
+  | "auth_failed"
   | "provider_error"
   | "rendering_error"
   | "not_eligible"
@@ -40,7 +41,9 @@ export interface SendEmailParams {
   };
 }
 
-type EmailClient = Pick<Resend, "emails">;
+export interface SmtpTransportLike {
+  sendMail: (mailOptions: any) => Promise<any>;
+}
 
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (character) => {
@@ -55,52 +58,63 @@ function escapeHtml(value: string): string {
   });
 }
 
-export function classifyResendError(error: unknown): { status: EmailStatus; message: string } {
+export function classifySmtpError(error: unknown): { status: EmailStatus; message: string } {
   if (!error || typeof error !== "object") {
     return { status: "unknown_result", message: "ระบบส่งอีเมลไม่ตอบสนองหรือไม่ทราบสาเหตุแน่ชัด" };
   }
 
   const errObj = error as Record<string, any>;
-  const name = String(errObj.name || "").toLowerCase();
+  const code = String(errObj.code || "").toUpperCase();
+  const responseCode = Number(errObj.responseCode || 0);
   const msg = String(errObj.message || "").toLowerCase();
-  const statusCode = Number(errObj.statusCode || errObj.status || 0);
 
-  // Sender domain rejection / unverified / restricted API key
+  // Authentication error (535, EAUTH, invalid login / app password)
   if (
-    statusCode === 403 ||
-    name === "restricted_api_key" ||
-    name === "invalid_from_address" ||
-    name === "validation_error" ||
-    msg.includes("domain") ||
-    msg.includes("not verified") ||
-    msg.includes("verify") ||
-    msg.includes("sender") ||
-    msg.includes("from")
+    code === "EAUTH" ||
+    responseCode === 535 ||
+    msg.includes("badcredentials") ||
+    msg.includes("username and password not accepted") ||
+    msg.includes("invalid login") ||
+    msg.includes("authentication failed")
   ) {
     return {
-      status: "sender_rejected",
-      message: "โดเมนหรืออีเมลผู้ส่งยังไม่ผ่านการยืนยันในระบบ Resend (Sender domain unverified)",
+      status: "auth_failed",
+      message: "การยืนยันตัวตนกับ Gmail ล้มเหลว โปรดตรวจสอบ App Password 16 หลัก",
     };
   }
 
-  // Rate limit or provider server errors
-  if (statusCode === 429 || name.includes("rate_limit")) {
+  // Connection / DNS / Timeout
+  if (
+    code === "ESOCKET" ||
+    code === "ETIMEDOUT" ||
+    code === "ECONNREFUSED" ||
+    code === "EDNS" ||
+    msg.includes("timeout") ||
+    msg.includes("connection closed")
+  ) {
     return {
       status: "provider_error",
-      message: "ผู้ให้บริการจำกัดจำนวนการส่งอีเมลชั่วคราว (Rate limit exceeded)",
+      message: "ไม่สามารถเชื่อมต่อกับ Gmail เซิร์ฟเวอร์ได้ (Connection timeout/refused)",
     };
   }
 
-  if (statusCode >= 500 || name.includes("timeout") || name.includes("network")) {
+  // Daily sending quota / Rate limit
+  if (
+    responseCode === 421 ||
+    responseCode === 450 ||
+    responseCode === 452 ||
+    msg.includes("quota") ||
+    msg.includes("rate limit")
+  ) {
     return {
       status: "provider_error",
-      message: "ระบบผู้ให้บริการอีเมลขัดข้องชั่วคราว (Provider server error)",
+      message: "เกินโควตาการส่งอีเมลของ Gmail ชั่วคราว (Gmail daily limit exceeded)",
     };
   }
 
   return {
     status: "provider_error",
-    message: "ผู้ให้บริการอีเมลปฏิเสธคำขอส่ง (Provider rejected email request)",
+    message: "Gmail เซิร์ฟเวอร์ปฏิเสธคำขอส่งอีเมล: " + (errObj.message || "Unknown SMTP error"),
   };
 }
 
@@ -109,7 +123,12 @@ async function buildTemplate(params: SendEmailParams, orderUrl: string, checkout
   let subject = params.subject;
   let text = "";
   let html = "";
-  const attachments: NonNullable<Parameters<EmailClient["emails"]["send"]>[0]["attachments"]> = [];
+  const attachments: Array<{
+    filename: string;
+    content: Buffer;
+    contentType: string;
+    cid: string;
+  }> = [];
 
   switch (params.template) {
     case "order_created":
@@ -143,7 +162,7 @@ async function buildTemplate(params: SendEmailParams, orderUrl: string, checkout
             filename: `ticket-${index + 1}.png`,
             content: png,
             contentType: "image/png",
-            contentId,
+            cid: contentId,
           });
           return `<section style="margin:24px auto;padding:20px;max-width:360px;border:1px solid #e5e7eb;border-radius:12px;text-align:center;background-color:#ffffff"><h2 style="font-size:18px;margin:0 0 12px;color:#111827">บัตรใบที่ ${index + 1} จาก ${tickets.length}</h2><img src="cid:${escapeHtml(contentId)}" width="280" height="280" alt="QR Code บัตรใบที่ ${index + 1}" style="display:block;width:280px;height:280px;margin:0 auto" /></section>`;
         })
@@ -169,28 +188,47 @@ async function buildTemplate(params: SendEmailParams, orderUrl: string, checkout
   return { subject, text, html, attachments };
 }
 
+function createDefaultTransporter(): SmtpTransportLike {
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS?.replace(/\s+/g, ""); // strip spaces from App Password
+  const host = process.env.SMTP_HOST || "smtp.gmail.com";
+  const port = parseInt(process.env.SMTP_PORT || "465", 10);
+  const secure = process.env.SMTP_SECURE === "true" || port === 465;
+
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure,
+    auth: {
+      user,
+      pass,
+    },
+  });
+}
+
 export async function sendEmail(
   params: SendEmailParams,
-  client?: EmailClient
+  transport?: SmtpTransportLike
 ): Promise<SendEmailResult> {
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM;
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+  const from = process.env.EMAIL_FROM || (smtpUser ? `งานลาบแรกพบ <${smtpUser}>` : undefined);
   const baseUrl = process.env.APP_BASE_URL;
 
   // 1. Check configuration
-  if (process.env.EMAIL_PROVIDER !== "resend" || !apiKey || !from || !baseUrl) {
-    console.error("[EMAIL ERROR] Resend is not fully configured", {
+  if (!smtpUser || !smtpPass || !from || !baseUrl) {
+    console.error("[EMAIL ERROR] Gmail SMTP is not fully configured", {
       template: params.template,
       order_code: params.data.order_code,
-      has_provider: process.env.EMAIL_PROVIDER === "resend",
-      has_api_key: Boolean(apiKey),
+      has_user: Boolean(smtpUser),
+      has_pass: Boolean(smtpPass),
       has_from: Boolean(from),
       has_base_url: Boolean(baseUrl),
     });
     return {
       ok: false,
       status: "config_missing",
-      error: "การตั้งค่าระบบส่งอีเมลไม่สมบูรณ์ (Missing configuration)",
+      error: "การตั้งค่าระบบส่งอีเมล Gmail SMTP ไม่สมบูรณ์ (Missing SMTP configuration)",
     };
   }
 
@@ -228,48 +266,35 @@ export async function sendEmail(
     };
   }
 
-  // 4. Send via Resend client
+  // 4. Send via Nodemailer transporter
   try {
-    const resend = client || new Resend(apiKey);
-    const { data, error } = await resend.emails.send({
+    const activeTransport = transport || createDefaultTransporter();
+    const info = await activeTransport.sendMail({
       from,
       to: params.to,
       subject: message.subject,
       text: message.text,
       html: message.html,
-      ...(message.attachments.length > 0 ? { attachments: message.attachments } : {}),
+      attachments: message.attachments,
     });
-
-    if (error || !data?.id) {
-      const classified = classifyResendError(error);
-      console.error("[EMAIL ERROR] Resend rejected email", {
-        template: params.template,
-        order_code: params.data.order_code,
-        status: classified.status,
-        error_name: (error as any)?.name || "UnknownError",
-      });
-      return {
-        ok: false,
-        status: classified.status,
-        error: classified.message,
-      };
-    }
 
     return {
       ok: true,
       status: "delivered_to_provider",
-      provider_id: data.id,
+      provider_id: info?.messageId || "smtp-ok",
     };
-  } catch (err) {
-    console.error("[EMAIL ERROR] Failed to send email", {
+  } catch (err: any) {
+    const classified = classifySmtpError(err);
+    console.error("[EMAIL ERROR] Gmail SMTP send failed", {
       template: params.template,
       order_code: params.data.order_code,
-      error_name: err instanceof Error ? err.name : "UnknownError",
+      status: classified.status,
+      code: err?.code,
     });
     return {
       ok: false,
-      status: "unknown_result",
-      error: "เกิดข้อผิดพลาดที่ไม่คาดคิดในการส่งอีเมล",
+      status: classified.status,
+      error: classified.message,
     };
   }
 }

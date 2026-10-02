@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { sendEmail, classifyResendError } from "@/lib/email";
+import { sendEmail, classifySmtpError } from "@/lib/email";
 
 const originalEnv = {
-  EMAIL_PROVIDER: process.env.EMAIL_PROVIDER,
-  RESEND_API_KEY: process.env.RESEND_API_KEY,
+  SMTP_USER: process.env.SMTP_USER,
+  SMTP_PASS: process.env.SMTP_PASS,
   EMAIL_FROM: process.env.EMAIL_FROM,
   APP_BASE_URL: process.env.APP_BASE_URL,
 };
@@ -16,9 +16,9 @@ afterEach(() => {
 });
 
 function configureEmail() {
-  process.env.EMAIL_PROVIDER = "resend";
-  process.env.RESEND_API_KEY = "re_test_only";
-  process.env.EMAIL_FROM = "tickets@example.test";
+  process.env.SMTP_USER = "tickets@example.test";
+  process.env.SMTP_PASS = "test-app-password-1234";
+  process.env.EMAIL_FROM = "งานลาบแรกพบ <tickets@example.test>";
   process.env.APP_BASE_URL = "https://tickets.example.test/";
 }
 
@@ -27,11 +27,11 @@ const tickets = [
   { id: "ticket-2", code: "TICKETCODE0000002" },
 ] as any;
 
-describe("ticket email delivery", () => {
+describe("ticket email delivery via Gmail SMTP", () => {
   it("embeds one unique QR image for each ticket and a private fallback link", async () => {
     configureEmail();
-    const send = vi.fn().mockResolvedValue({ data: { id: "email-1" }, error: null });
-    const client = { emails: { send } } as any;
+    const sendMail = vi.fn().mockResolvedValue({ messageId: "email-1" });
+    const transport = { sendMail } as any;
 
     const result = await sendEmail(
       {
@@ -45,14 +45,14 @@ describe("ticket email delivery", () => {
           tickets,
         },
       },
-      client
+      transport
     );
 
     expect(result.ok).toBe(true);
     expect(result.status).toBe("delivered_to_provider");
     expect(result.provider_id).toBe("email-1");
-    expect(send).toHaveBeenCalledOnce();
-    const message = send.mock.calls[0][0];
+    expect(sendMail).toHaveBeenCalledOnce();
+    const message = sendMail.mock.calls[0][0];
     expect(message.to).toBe("buyer@example.test");
     expect(message.html).toContain("cid:ticket-1-ticket-1");
     expect(message.html).toContain("cid:ticket-2-ticket-2");
@@ -61,12 +61,13 @@ describe("ticket email delivery", () => {
     );
     expect(message.attachments).toHaveLength(2);
     expect(message.attachments.every((item: any) => item.contentType === "image/png")).toBe(true);
+    expect(message.attachments[0].cid).toBe("ticket-1-ticket-1");
     expect(Buffer.isBuffer(message.attachments[0].content)).toBe(true);
   });
 
   it("does not send paid email when no issued tickets are supplied", async () => {
     configureEmail();
-    const send = vi.fn();
+    const sendMail = vi.fn();
     const result = await sendEmail(
       {
         to: "buyer@example.test",
@@ -74,19 +75,20 @@ describe("ticket email delivery", () => {
         template: "paid",
         data: { buyer_name: "ผู้ซื้อ", order_code: "LRP-12345", tickets: [] },
       },
-      { emails: { send } } as any
+      { sendMail } as any
     );
 
     expect(result.ok).toBe(false);
     expect(result.status).toBe("not_eligible");
-    expect(send).not.toHaveBeenCalled();
+    expect(sendMail).not.toHaveBeenCalled();
   });
 
-  it("reports provider failure without throwing and classifies sender rejection", async () => {
+  it("reports provider failure without throwing and classifies SMTP auth failure", async () => {
     configureEmail();
-    const send = vi.fn().mockResolvedValue({
-      data: null,
-      error: { name: "validation_error", message: "Domain not verified", statusCode: 403 },
+    const sendMail = vi.fn().mockRejectedValue({
+      code: "EAUTH",
+      responseCode: 535,
+      message: "5.7.8 Username and Password not accepted",
     });
     const result = await sendEmail(
       {
@@ -95,20 +97,20 @@ describe("ticket email delivery", () => {
         template: "paid",
         data: { buyer_name: "ผู้ซื้อ", order_code: "LRP-12345", tickets: [tickets[0]] },
       },
-      { emails: { send } } as any
+      { sendMail } as any
     );
 
     expect(result.ok).toBe(false);
-    expect(result.status).toBe("sender_rejected");
-    expect(result.error).toContain("Sender domain unverified");
+    expect(result.status).toBe("auth_failed");
+    expect(result.error).toContain("App Password");
   });
 
-  it("fails closed when required Resend configuration is missing", async () => {
-    process.env.EMAIL_PROVIDER = "resend";
-    delete process.env.RESEND_API_KEY;
+  it("fails closed when required SMTP configuration is missing", async () => {
+    delete process.env.SMTP_USER;
+    delete process.env.SMTP_PASS;
     delete process.env.EMAIL_FROM;
     delete process.env.APP_BASE_URL;
-    const send = vi.fn();
+    const sendMail = vi.fn();
 
     const result = await sendEmail(
       {
@@ -117,17 +119,19 @@ describe("ticket email delivery", () => {
         template: "order_created",
         data: { buyer_name: "ผู้ซื้อ", order_code: "LRP-12345" },
       },
-      { emails: { send } } as any
+      { sendMail } as any
     );
 
     expect(result.ok).toBe(false);
     expect(result.status).toBe("config_missing");
-    expect(send).not.toHaveBeenCalled();
+    expect(sendMail).not.toHaveBeenCalled();
   });
 
-  it("correctly classifies rate limits as provider_error", () => {
-    const error = { name: "rate_limit_exceeded", statusCode: 429 };
-    const classification = classifyResendError(error);
-    expect(classification.status).toBe("provider_error");
+  it("correctly classifies rate limits and connection errors", () => {
+    const rateLimit = { responseCode: 452, message: "Daily user sending quota exceeded" };
+    expect(classifySmtpError(rateLimit).status).toBe("provider_error");
+
+    const connTimeout = { code: "ETIMEDOUT", message: "Connection timed out" };
+    expect(classifySmtpError(connTimeout).status).toBe("provider_error");
   });
 });
