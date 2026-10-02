@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { engine } from "@/lib/engine";
+import { supabaseAdmin } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
@@ -42,8 +43,22 @@ export async function GET() {
           }
         }
 
+        let slipUrl = p.slip_url || null;
+        if (!slipUrl && p.slip_path) {
+          try {
+            const { data: signedData } = await supabaseAdmin.storage
+              .from("Slips")
+              .createSignedUrl(p.slip_path, 3600);
+            if (signedData?.signedUrl) {
+              slipUrl = signedData.signedUrl;
+            }
+          } catch {
+            // ignore
+          }
+        }
+
         allPayments.push({
-          payment: p,
+          payment: { ...p, slip_url: slipUrl },
           order: {
             id: order.id,
             code: order.code,

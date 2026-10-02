@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { engine } from "@/lib/engine";
+import { supabaseAdmin } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
@@ -150,7 +151,34 @@ export async function POST(
     const slipUuid = crypto.randomUUID();
     const slipPath = `orders/${order.id}/${slipUuid}.${sniffed.ext}`;
 
-    // 7. Add payment to engine
+    // 7. Upload to Supabase Storage and obtain signed URL
+    let slipUrl: string | null = null;
+    try {
+      const { error: uploadErr } = await supabaseAdmin.storage
+        .from("Slips")
+        .upload(slipPath, buffer, {
+          contentType: sniffed.mime,
+          upsert: true,
+        });
+
+      if (!uploadErr) {
+        const { data: signedData } = await supabaseAdmin.storage
+          .from("Slips")
+          .createSignedUrl(slipPath, 60 * 60 * 24); // 24 hours
+        if (signedData?.signedUrl) {
+          slipUrl = signedData.signedUrl;
+        }
+      }
+    } catch (storageErr) {
+      console.error("Storage upload error:", storageErr);
+    }
+
+    // Always provide base64 Data URL fallback for instant admin preview
+    if (!slipUrl && buffer.length < 5 * 1024 * 1024) {
+      slipUrl = `data:${sniffed.mime};base64,${buffer.toString("base64")}`;
+    }
+
+    // 8. Add payment to engine
     const payment = await engine.addPayment({
       order_id: order.id,
       slip_path: slipPath,
@@ -159,6 +187,7 @@ export async function POST(
       transferred_at: transferredAt,
       to_bank: toBank,
       payer_name_or_last4: payerNameOrLast4,
+      slip_url: slipUrl,
     });
 
     return NextResponse.json({

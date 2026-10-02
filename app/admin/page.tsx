@@ -31,6 +31,7 @@ interface QueueItem {
     to_bank: string;
     payer_name_or_last4: string;
     created_at: string;
+    slip_url?: string | null;
   };
   order: {
     id: string;
@@ -360,18 +361,39 @@ export default function AdminSlipQueuePage() {
                 </div>
               )}
 
-              {/* Slip Image Preview Placeholder / Real image container */}
-              <div className="w-full min-h-[200px] max-h-[340px] bg-black/5 rounded-xl border border-border flex items-center justify-center p-2 overflow-hidden">
-                <div className="flex flex-col items-center gap-2 p-6 text-center text-xs text-content-muted">
-                  <Eye className="w-8 h-8 text-brand" />
-                  <span className="font-semibold text-content text-sm">
-                    ภาพสลิปการโอนเงิน
-                  </span>
-                  <span>เส้นทางไฟล์: {selectedItem.payment.slip_path}</span>
-                  <span className="text-[10px] text-content-muted">
-                    (ในโหมดใช้งานจริง ภาพจะถูกเรียกผ่าน Signed URL 5 นาทีจาก Supabase Private Bucket)
-                  </span>
-                </div>
+              {/* Slip Image Preview */}
+              <div className="w-full min-h-[220px] max-h-[440px] bg-black/5 dark:bg-black/30 rounded-2xl border border-border flex flex-col items-center justify-center p-3 overflow-hidden">
+                {selectedItem.payment.slip_url ? (
+                  <div className="flex flex-col items-center gap-2.5 w-full">
+                    <div className="relative max-h-[360px] overflow-hidden rounded-xl bg-white dark:bg-neutral-900 p-1.5 border border-border shadow-inner">
+                      <img
+                        src={selectedItem.payment.slip_url}
+                        alt="ภาพสลิปการโอนเงิน"
+                        className="max-h-[340px] w-auto object-contain rounded-lg mx-auto"
+                      />
+                    </div>
+                    <a
+                      href={selectedItem.payment.slip_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-brand font-semibold hover:underline flex items-center gap-1.5 py-1 px-3 rounded-full bg-brand/10 hover:bg-brand/20 transition-colors"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      เปิดดูรูปสลิปขนาดเต็ม
+                    </a>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2 p-6 text-center text-xs text-content-muted">
+                    <Eye className="w-8 h-8 text-brand" />
+                    <span className="font-semibold text-content text-sm">
+                      ภาพสลิปการโอนเงิน
+                    </span>
+                    <span>เส้นทางไฟล์: {selectedItem.payment.slip_path}</span>
+                    <span className="text-[10px] text-content-muted">
+                      (ไม่พบไฟล์ภาพสลิป หรือสลิปนี้ถูกส่งเข้ามาก่อนการเปิดใช้งานระบบจัดเก็บภาพ)
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Amount Comparison */}
