@@ -41,8 +41,8 @@
 ---
 
 ## 4. Deploy ขึ้น Vercel (Production Launch)
-- [ ] เชื่อมต่อ Git Repository กับ [Vercel](https://vercel.com)
-- [ ] นำค่า Environment Variables จาก `.env.local` ไปใส่ใน Vercel Dashboard:
+- [x] เชื่อมต่อ Git Repository กับ [Vercel](https://vercel.com) (nonHine/larb-raek-phob-tickets)
+- [x] นำค่า Environment Variables จาก `.env.local` ไปใส่ใน Vercel Dashboard ครบทั้ง 9 ตัวแปร:
   - `NEXT_PUBLIC_SUPABASE_URL`
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
   - `SUPABASE_SERVICE_ROLE_KEY`
@@ -51,5 +51,6 @@
   - `EMAIL_PROVIDER=resend`
   - `RESEND_API_KEY`
   - `EMAIL_FROM`
-  - `APP_BASE_URL` (ใส่ Domain ของ Vercel เช่น `https://larb-tickets.vercel.app`)
+  - `APP_BASE_URL` (`https://larb-raek-phob-tickets.vercel.app`)
 - [ ] กด Deploy และทดสอบการสั่งซื้อรอบจริงบนมือถือ 1 รายการ
+
