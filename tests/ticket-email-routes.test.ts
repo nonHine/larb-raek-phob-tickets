@@ -24,7 +24,7 @@ const order = {
   phone: "0812345678",
   email: "buyer@example.test",
   quantity: 2,
-  total_thb: 40,
+  total_thb: 98,
   status: "paid",
 };
 const issuedTickets = [
@@ -35,7 +35,7 @@ const issuedTickets = [
 beforeEach(() => {
   vi.clearAllMocks();
   engineMock.getTicketsForOrder.mockResolvedValue(issuedTickets);
-  sendEmailMock.mockResolvedValue(true);
+  sendEmailMock.mockResolvedValue({ ok: true, status: "delivered_to_provider" });
 });
 
 function request(url: string, body: unknown) {
@@ -62,6 +62,7 @@ describe("ticket email route triggers", () => {
 
     expect(response.status).toBe(200);
     expect(body.ticket_email_sent).toBe(true);
+    expect(body.ticket_email_status).toBe("delivered_to_provider");
     expect(engineMock.getTicketsForOrder).toHaveBeenCalledWith(order.id);
     expect(sendEmailMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -91,14 +92,18 @@ describe("ticket email route triggers", () => {
     expect(sendEmailMock).not.toHaveBeenCalled();
   });
 
-  it("keeps approval successful if the email provider fails", async () => {
+  it("keeps approval successful and safely reports error if email provider rejects", async () => {
     engineMock.approvePayment.mockResolvedValue({
       success: true,
       payment: { id: "payment-1" },
       order,
       ticketsIssued: 2,
     });
-    sendEmailMock.mockResolvedValue(false);
+    sendEmailMock.mockResolvedValue({
+      ok: false,
+      status: "sender_rejected",
+      error: "โดเมนผู้ส่งยังไม่ผ่านการยืนยันในระบบ Resend (Sender domain unverified)",
+    });
 
     const response = await approveSlip(request("https://example.test", {}), {
       params: { id: "payment-1" },
@@ -108,9 +113,11 @@ describe("ticket email route triggers", () => {
     expect(response.status).toBe(200);
     expect(body.order_status).toBe("paid");
     expect(body.ticket_email_sent).toBe(false);
+    expect(body.ticket_email_status).toBe("sender_rejected");
+    expect(body.ticket_email_reason).toContain("โดเมนผู้ส่งยังไม่ผ่านการยืนยัน");
   });
 
-  it("resends all QR tickets through validated order lookup", async () => {
+  it("resends all QR tickets through validated order lookup for paid orders", async () => {
     engineMock.getOrdersByPhone.mockResolvedValue([order]);
     engineMock.getTicketsForOrder.mockResolvedValue(issuedTickets);
 
@@ -128,5 +135,19 @@ describe("ticket email route triggers", () => {
         data: expect.objectContaining({ tickets: issuedTickets }),
       })
     );
+  });
+
+  it("does not dispatch QR tickets in lookup if order is not paid", async () => {
+    const unpaidOrder = { ...order, status: "pending_payment" };
+    engineMock.getOrdersByPhone.mockResolvedValue([unpaidOrder]);
+
+    const response = await lookupOrder(
+      request("https://example.test", { phone: unpaidOrder.phone })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.orders[0].email_sent).toBe(false);
+    expect(sendEmailMock).not.toHaveBeenCalled();
   });
 });

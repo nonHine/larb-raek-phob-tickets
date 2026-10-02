@@ -9,54 +9,35 @@ export async function GET(req: Request) {
     const q = (searchParams.get("q") || "").toLowerCase().trim();
     const status = searchParams.get("status") || "all";
 
-    const allOrders: any[] = [];
+    const rawOrders = await engine.getAllOrders({ query: q, status });
 
-    for (const order of engine.orders.values()) {
-      // Status filter
-      if (status !== "all" && order.status !== status) {
-        continue;
-      }
+    const allOrders = await Promise.all(
+      rawOrders.map(async (order) => {
+        const payments = await engine.getPaymentsForOrder(order.id);
+        const tickets = await engine.getTicketsForOrder(order.id);
+        const approvedAmount = payments
+          .filter((p) => p.status === "approved")
+          .reduce((sum, p) => sum + Number(p.amount_thb), 0);
 
-      // Query filter
-      if (q) {
-        const match =
-          order.code.toLowerCase().includes(q) ||
-          order.buyer_name.toLowerCase().includes(q) ||
-          order.phone.includes(q) ||
-          order.email.toLowerCase().includes(q);
-        if (!match) continue;
-      }
-
-      const payments = await engine.getPaymentsForOrder(order.id);
-      const tickets = await engine.getTicketsForOrder(order.id);
-      const approvedAmount = payments
-        .filter((p) => p.status === "approved")
-        .reduce((sum, p) => sum + Number(p.amount_thb), 0);
-
-      allOrders.push({
-        id: order.id,
-        code: order.code,
-        access_token: order.access_token,
-        buyer_name: order.buyer_name,
-        phone: order.phone,
-        email: order.email,
-        quantity: order.quantity,
-        total_thb: order.total_thb,
-        status: order.status,
-        approved_amount: approvedAmount,
-        remaining_amount: Math.max(0, order.total_thb - approvedAmount),
-        admin_note: order.admin_note,
-        created_at: order.created_at,
-        payments_count: payments.length,
-        tickets_count: tickets.length,
-        tickets_checked_in: tickets.filter((t) => t.status === "checked_in").length,
-      });
-    }
-
-    // Sort newest first
-    allOrders.sort(
-      (a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        return {
+          id: order.id,
+          code: order.code,
+          access_token: order.access_token,
+          buyer_name: order.buyer_name,
+          phone: order.phone,
+          email: order.email,
+          quantity: order.quantity,
+          total_thb: order.total_thb,
+          status: order.status,
+          approved_amount: approvedAmount,
+          remaining_amount: Math.max(0, order.total_thb - approvedAmount),
+          admin_note: order.admin_note,
+          created_at: order.created_at,
+          payments_count: payments.length,
+          tickets_count: tickets.length,
+          tickets_checked_in: tickets.filter((t) => t.status === "checked_in").length,
+        };
+      })
     );
 
     return NextResponse.json({
@@ -95,12 +76,10 @@ export async function POST(req: Request) {
     }
 
     if (action === "note") {
-      const order = await engine.getOrderById(order_id);
+      const order = await engine.updateOrderAdminNote(order_id, note);
       if (!order) {
         return NextResponse.json({ error: "Order not found" }, { status: 404 });
       }
-      order.admin_note = note;
-      engine.orders.set(order.id, order);
       return NextResponse.json({ success: true, order });
     }
 

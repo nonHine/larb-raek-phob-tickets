@@ -300,13 +300,18 @@ export class OrderEngine {
           .eq("id", id)
           .maybeSingle();
 
-        if (data && !error) {
-          const ord = data as Order;
-          this.orders.set(ord.id, ord);
-          return { ...ord };
+        if (error) {
+          console.error("Supabase getOrderById error:", error);
+          return null;
         }
+        if (!data) return null;
+
+        const ord = data as Order;
+        this.orders.set(ord.id, ord);
+        return { ...ord };
       } catch (err) {
-        console.error("Supabase getOrderById error:", err);
+        console.error("Supabase getOrderById exception:", err);
+        return null;
       }
     }
 
@@ -326,13 +331,16 @@ export class OrderEngine {
           .eq("phone", cleanPhone)
           .order("created_at", { ascending: false });
 
-        if (data && !error) {
-          const list = data as Order[];
-          list.forEach((ord) => this.orders.set(ord.id, ord));
-          return list;
+        if (error) {
+          console.error("Supabase getOrdersByPhone error:", error);
+          return [];
         }
+        const list = (data || []) as Order[];
+        list.forEach((ord) => this.orders.set(ord.id, ord));
+        return list.map((ord) => ({ ...ord }));
       } catch (err) {
-        console.error("Supabase getOrdersByPhone error:", err);
+        console.error("Supabase getOrdersByPhone exception:", err);
+        return [];
       }
     }
 
@@ -360,13 +368,16 @@ export class OrderEngine {
           .order("created_at", { ascending: false })
           .limit(50);
 
-        if (data && !error) {
-          const list = data as Order[];
-          list.forEach((ord) => this.orders.set(ord.id, ord));
-          return list;
+        if (error) {
+          console.error("Supabase searchOrders error:", error);
+          return [];
         }
+        const list = (data || []) as Order[];
+        list.forEach((ord) => this.orders.set(ord.id, ord));
+        return list.map((ord) => ({ ...ord }));
       } catch (err) {
-        console.error("Supabase searchOrders error:", err);
+        console.error("Supabase searchOrders exception:", err);
+        return [];
       }
     }
 
@@ -400,13 +411,16 @@ export class OrderEngine {
           .order("created_at", { ascending: false })
           .limit(50);
 
-        if (data && !error) {
-          const list = data as Ticket[];
-          list.forEach((t) => this.tickets.set(t.id, t));
-          return list;
+        if (error) {
+          console.error("Supabase searchTickets error:", error);
+          return [];
         }
+        const list = (data || []) as Ticket[];
+        list.forEach((t) => this.tickets.set(t.id, t));
+        return list.map((t) => ({ ...t }));
       } catch (err) {
-        console.error("Supabase searchTickets error:", err);
+        console.error("Supabase searchTickets exception:", err);
+        return [];
       }
     }
 
@@ -498,18 +512,22 @@ export class OrderEngine {
           .eq("order_id", orderId)
           .order("created_at", { ascending: true });
 
-        if (data && !error && data.length > 0) {
-          const list: Payment[] = data.map((p: any) => {
-            const cached = this.payments.get(p.id);
-            return {
-              ...p,
-              slip_url: cached?.slip_url || null,
-            };
-          });
-          return list;
+        if (error) {
+          console.error("Supabase getPaymentsForOrder error:", error);
+          return [];
         }
+
+        const list: Payment[] = (data || []).map((p: any) => {
+          const cached = this.payments.get(p.id);
+          return {
+            ...p,
+            slip_url: cached?.slip_url || null,
+          };
+        });
+        return list;
       } catch (err) {
-        console.error("Supabase getPaymentsForOrder error:", err);
+        console.error("Supabase getPaymentsForOrder exception:", err);
+        return [];
       }
     }
 
@@ -532,11 +550,14 @@ export class OrderEngine {
           .select("*")
           .eq("slip_sha256", sha256);
 
-        if (data && !error && data.length > 0) {
-          return data as Payment[];
+        if (error) {
+          console.error("Supabase findDuplicatePayments error:", error);
+          return [];
         }
+        return (data || []) as Payment[];
       } catch (err) {
-        console.error("Supabase findDuplicatePayments error:", err);
+        console.error("Supabase findDuplicatePayments exception:", err);
+        return [];
       }
     }
 
@@ -559,17 +580,24 @@ export class OrderEngine {
     | { success: false; error: "already_reviewed"; payment: Payment }
     | { success: false; error: string }
   > {
-    let currentPayment: Payment | null = this.payments.get(params.payment_id) || null;
-
-    if (!currentPayment && this.isSupabaseReady()) {
+    let currentPayment: Payment | null = null;
+    if (this.isSupabaseReady()) {
       try {
-        const { data } = await supabaseAdmin
+        const { data, error } = await supabaseAdmin
           .from("payments")
           .select("*")
           .eq("id", params.payment_id)
           .maybeSingle();
-        if (data) currentPayment = data as Payment;
-      } catch {}
+        if (error) {
+          console.error("Supabase getPayment for approval error:", error);
+        } else if (data) {
+          currentPayment = data as Payment;
+        }
+      } catch (err) {
+        console.error("Supabase getPayment exception:", err);
+      }
+    } else {
+      currentPayment = this.payments.get(params.payment_id) || null;
     }
 
     if (!currentPayment) {
@@ -587,7 +615,18 @@ export class OrderEngine {
     const releaseLock = await this.acquireLock(currentPayment.order_id);
     try {
       // Re-check status under lock to handle concurrent race conditions
-      currentPayment = this.payments.get(params.payment_id) || currentPayment;
+      if (this.isSupabaseReady()) {
+        try {
+          const { data } = await supabaseAdmin
+            .from("payments")
+            .select("*")
+            .eq("id", params.payment_id)
+            .maybeSingle();
+          if (data) currentPayment = data as Payment;
+        } catch {}
+      } else {
+        currentPayment = this.payments.get(params.payment_id) || currentPayment;
+      }
       if (currentPayment.status !== "pending") {
         return {
           success: false,
@@ -668,17 +707,24 @@ export class OrderEngine {
     | { success: false; error: "already_reviewed"; payment: Payment }
     | { success: false; error: string }
   > {
-    let currentPayment: Payment | null = this.payments.get(params.payment_id) || null;
-
-    if (!currentPayment && this.isSupabaseReady()) {
+    let currentPayment: Payment | null = null;
+    if (this.isSupabaseReady()) {
       try {
-        const { data } = await supabaseAdmin
+        const { data, error } = await supabaseAdmin
           .from("payments")
           .select("*")
           .eq("id", params.payment_id)
           .maybeSingle();
-        if (data) currentPayment = data as Payment;
-      } catch {}
+        if (error) {
+          console.error("Supabase getPayment for reject error:", error);
+        } else if (data) {
+          currentPayment = data as Payment;
+        }
+      } catch (err) {
+        console.error("Supabase getPayment for reject exception:", err);
+      }
+    } else {
+      currentPayment = this.payments.get(params.payment_id) || null;
     }
 
     if (!currentPayment) {
@@ -696,7 +742,18 @@ export class OrderEngine {
     const releaseLock = await this.acquireLock(currentPayment.order_id);
     try {
       // Re-check status under lock to handle concurrent race conditions
-      currentPayment = this.payments.get(params.payment_id) || currentPayment;
+      if (this.isSupabaseReady()) {
+        try {
+          const { data } = await supabaseAdmin
+            .from("payments")
+            .select("*")
+            .eq("id", params.payment_id)
+            .maybeSingle();
+          if (data) currentPayment = data as Payment;
+        } catch {}
+      } else {
+        currentPayment = this.payments.get(params.payment_id) || currentPayment;
+      }
       if (currentPayment.status !== "pending") {
         return {
           success: false,
@@ -906,13 +963,18 @@ export class OrderEngine {
           .eq("code", cleanCode)
           .maybeSingle();
 
-        if (data && !error) {
-          const t = data as Ticket;
-          this.tickets.set(t.id, t);
-          return { ...t };
+        if (error) {
+          console.error("Supabase getTicketByCode error:", error);
+          return null;
         }
+        if (!data) return null;
+
+        const t = data as Ticket;
+        this.tickets.set(t.id, t);
+        return { ...t };
       } catch (err) {
-        console.error("Supabase getTicketByCode error:", err);
+        console.error("Supabase getTicketByCode exception:", err);
+        return null;
       }
     }
 
@@ -1072,6 +1134,186 @@ export class OrderEngine {
     }
 
     return { ...ticket };
+  }
+
+  // --- Admin Support Methods ---
+  public async getPendingPayments(): Promise<Payment[]> {
+    if (this.isSupabaseReady()) {
+      try {
+        const { data, error } = await supabaseAdmin
+          .from("payments")
+          .select("*")
+          .eq("status", "pending")
+          .order("created_at", { ascending: true });
+
+        if (error) {
+          console.error("Supabase getPendingPayments error:", error);
+          return [];
+        }
+        return (data || []) as Payment[];
+      } catch (err) {
+        console.error("Supabase getPendingPayments exception:", err);
+        return [];
+      }
+    }
+
+    const list: Payment[] = [];
+    for (const p of this.payments.values()) {
+      if (p.status === "pending") {
+        list.push({ ...p });
+      }
+    }
+    return list.sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+  }
+
+  public async getAllOrders(filters?: { status?: string; query?: string }): Promise<Order[]> {
+    const q = (filters?.query || "").toLowerCase().trim();
+    const status = filters?.status || "all";
+
+    if (this.isSupabaseReady()) {
+      try {
+        let query = supabaseAdmin
+          .from("orders")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (status !== "all") {
+          query = query.eq("status", status);
+        }
+        if (q) {
+          query = query.or(`code.ilike.%${q}%,buyer_name.ilike.%${q}%,phone.ilike.%${q}%,email.ilike.%${q}%`);
+        }
+
+        const { data, error } = await query;
+        if (error) {
+          console.error("Supabase getAllOrders error:", error);
+          return [];
+        }
+        return (data || []) as Order[];
+      } catch (err) {
+        console.error("Supabase getAllOrders exception:", err);
+        return [];
+      }
+    }
+
+    const list: Order[] = [];
+    for (const order of this.orders.values()) {
+      if (status !== "all" && order.status !== status) continue;
+      if (q) {
+        const match =
+          order.code.toLowerCase().includes(q) ||
+          order.buyer_name.toLowerCase().includes(q) ||
+          order.phone.includes(q) ||
+          order.email.toLowerCase().includes(q);
+        if (!match) continue;
+      }
+      list.push({ ...order });
+    }
+    return list.sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+  }
+
+  public async updateOrderAdminNote(orderId: string, note: string): Promise<Order | null> {
+    const order = await this.getOrderById(orderId);
+    if (!order) return null;
+
+    order.admin_note = note;
+    this.orders.set(order.id, { ...order });
+
+    if (this.isSupabaseReady()) {
+      try {
+        await supabaseAdmin
+          .from("orders")
+          .update({ admin_note: note })
+          .eq("id", orderId);
+      } catch (err) {
+        console.error("Supabase updateOrderAdminNote error:", err);
+      }
+    }
+
+    return { ...order };
+  }
+
+  public async getDashboardStats(): Promise<{
+    total_orders: number;
+    pending_payment_count: number;
+    under_review_count: number;
+    paid_count: number;
+    cancelled_count: number;
+    confirmed_revenue_thb: number;
+    tickets_issued: number;
+    tickets_checked_in: number;
+  }> {
+    if (this.isSupabaseReady()) {
+      try {
+        const [ordersRes, paymentsRes, ticketsRes] = await Promise.all([
+          supabaseAdmin.from("orders").select("id, status"),
+          supabaseAdmin.from("payments").select("amount_thb, status").eq("status", "approved"),
+          supabaseAdmin.from("tickets").select("id, status"),
+        ]);
+
+        const orders = ordersRes.data || [];
+        const payments = paymentsRes.data || [];
+        const tickets = ticketsRes.data || [];
+
+        return {
+          total_orders: orders.length,
+          pending_payment_count: orders.filter((o: any) => o.status === "pending_payment").length,
+          under_review_count: orders.filter((o: any) => o.status === "under_review").length,
+          paid_count: orders.filter((o: any) => o.status === "paid").length,
+          cancelled_count: orders.filter((o: any) => o.status === "cancelled").length,
+          confirmed_revenue_thb: payments.reduce((sum: number, p: any) => sum + Number(p.amount_thb || 0), 0),
+          tickets_issued: tickets.filter((t: any) => t.status === "issued" || t.status === "checked_in").length,
+          tickets_checked_in: tickets.filter((t: any) => t.status === "checked_in").length,
+        };
+      } catch (err) {
+        console.error("Supabase getDashboardStats exception:", err);
+      }
+    }
+
+    let pendingPaymentCount = 0;
+    let underReviewCount = 0;
+    let paidCount = 0;
+    let cancelledCount = 0;
+    let confirmedRevenue = 0;
+
+    for (const order of this.orders.values()) {
+      if (order.status === "pending_payment") pendingPaymentCount++;
+      else if (order.status === "under_review") underReviewCount++;
+      else if (order.status === "paid") paidCount++;
+      else if (order.status === "cancelled") cancelledCount++;
+    }
+
+    for (const payment of this.payments.values()) {
+      if (payment.status === "approved") {
+        confirmedRevenue += Number(payment.amount_thb);
+      }
+    }
+
+    let ticketsIssued = 0;
+    let ticketsCheckedIn = 0;
+    for (const ticket of this.tickets.values()) {
+      if (ticket.status === "issued" || ticket.status === "checked_in") {
+        ticketsIssued++;
+      }
+      if (ticket.status === "checked_in") {
+        ticketsCheckedIn++;
+      }
+    }
+
+    return {
+      total_orders: this.orders.size,
+      pending_payment_count: pendingPaymentCount,
+      under_review_count: underReviewCount,
+      paid_count: paidCount,
+      cancelled_count: cancelledCount,
+      confirmed_revenue_thb: confirmedRevenue,
+      tickets_issued: ticketsIssued,
+      tickets_checked_in: ticketsCheckedIn,
+    };
   }
 }
 

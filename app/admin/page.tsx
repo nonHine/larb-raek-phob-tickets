@@ -157,8 +157,9 @@ export default function AdminSlipQueuePage() {
       }
 
       if (data.ticket_email_sent === false) {
+        const reasonText = data.ticket_email_reason ? ` (${data.ticket_email_reason})` : "";
         setEmailNotice(
-          "อนุมัติสลิปและออกบัตรแล้ว แต่อีเมล QR ส่งไม่สำเร็จ ให้ผู้ซื้อค้นหาออเดอร์เพื่อเปิดตั๋วและลองส่งอีเมลอีกครั้ง"
+          `อนุมัติสลิปและออกบัตรแล้ว${reasonText} แต่อีเมล QR ส่งไม่สำเร็จ ให้ผู้ซื้อเปิดตั๋วผ่านหน้าค้นหาออเดอร์ในเว็บแทน`
         );
       } else if (data.ticket_email_sent === true) {
         setEmailNotice("ส่งคำขออีเมล QR บัตรให้ผู้ให้บริการแล้ว");

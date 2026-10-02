@@ -300,14 +300,16 @@ export default function OrderLookupPage() {
                   </div>
                 </div>
 
-                <p
-                  className={`text-xs ${ord.email_sent ? "text-status-success" : "text-status-warning"}`}
-                  role="status"
-                >
-                  {ord.email_sent
-                    ? "ส่งคำขออีเมลไปยังที่อยู่ที่บันทึกไว้แล้ว"
-                    : "ส่งอีเมลไม่สำเร็จ คุณยังเปิดดูตั๋วได้จากปุ่มด้านล่าง"}
-                </p>
+                {ord.status === "paid" && (
+                  <p
+                    className={`text-xs ${ord.email_sent ? "text-status-success" : "text-status-warning"}`}
+                    role="status"
+                  >
+                    {ord.email_sent
+                      ? "ส่งคำขออีเมล QR บัตรไปยังที่อยู่ที่บันทึกไว้แล้ว"
+                      : "ส่งอีเมลไม่สำเร็จ คุณยังเปิดดูตั๋วได้จากปุ่มด้านล่าง"}
+                  </p>
+                )}
 
                 <Link
                   href={ord.url}

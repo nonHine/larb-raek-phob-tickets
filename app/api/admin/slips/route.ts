@@ -8,40 +8,35 @@ export async function GET() {
   try {
     const allPayments: any[] = [];
 
+    const pendingPayments = await engine.getPendingPayments();
+
     // Collect all pending payments
-    for (const p of engine.payments.values()) {
-      if (p.status === "pending") {
-        const order = await engine.getOrderById(p.order_id);
-        if (!order) continue;
+    for (const p of pendingPayments) {
+      const order = await engine.getOrderById(p.order_id);
+      if (!order) continue;
 
-        const orderPayments = await engine.getPaymentsForOrder(order.id);
-        const approvedAmount = orderPayments
-          .filter((item) => item.status === "approved")
-          .reduce((sum, item) => sum + Number(item.amount_thb), 0);
-        const remainingAmount = Math.max(0, order.total_thb - approvedAmount);
+      const orderPayments = await engine.getPaymentsForOrder(order.id);
+      const approvedAmount = orderPayments
+        .filter((item) => item.status === "approved")
+        .reduce((sum, item) => sum + Number(item.amount_thb), 0);
+      const remainingAmount = Math.max(0, order.total_thb - approvedAmount);
 
-        // Duplicate checks: check if any other payment has same sha256 or (amount + transferred_at)
-        let duplicateMatches: any[] = [];
-        for (const other of engine.payments.values()) {
+      // Duplicate checks: check if any other payment has same sha256
+      let duplicateMatches: any[] = [];
+      if (p.slip_sha256) {
+        const dups = await engine.findDuplicatePayments(p.slip_sha256);
+        for (const other of dups) {
           if (other.id !== p.id) {
-            if (
-              other.slip_sha256 === p.slip_sha256 ||
-              (Number(other.amount_thb) === Number(p.amount_thb) &&
-                other.transferred_at === p.transferred_at)
-            ) {
-              const otherOrder = await engine.getOrderById(other.order_id);
-              duplicateMatches.push({
-                payment_id: other.id,
-                order_code: otherOrder?.code,
-                status: other.status,
-                reason:
-                  other.slip_sha256 === p.slip_sha256
-                    ? "ไฟล์สลิปตรงกัน (SHA-256 ซ้ำ)"
-                    : "ยอดเงินและเวลาโอนตรงกันเป๊ะ",
-              });
-            }
+            const otherOrder = await engine.getOrderById(other.order_id);
+            duplicateMatches.push({
+              payment_id: other.id,
+              order_code: otherOrder?.code,
+              status: other.status,
+              reason: "ไฟล์สลิปตรงกัน (SHA-256 ซ้ำ)",
+            });
           }
         }
+      }
 
         let slipUrl = p.slip_url || null;
         if (!slipUrl && p.slip_path) {
@@ -74,7 +69,6 @@ export async function GET() {
           duplicates: duplicateMatches,
         });
       }
-    }
 
     // Sort oldest first
     allPayments.sort(

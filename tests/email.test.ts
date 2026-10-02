@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { sendEmail } from "@/lib/email";
+import { sendEmail, classifyResendError } from "@/lib/email";
 
 const originalEnv = {
   EMAIL_PROVIDER: process.env.EMAIL_PROVIDER,
@@ -33,7 +33,7 @@ describe("ticket email delivery", () => {
     const send = vi.fn().mockResolvedValue({ data: { id: "email-1" }, error: null });
     const client = { emails: { send } } as any;
 
-    const sent = await sendEmail(
+    const result = await sendEmail(
       {
         to: "buyer@example.test",
         subject: "ignored by paid template",
@@ -48,7 +48,9 @@ describe("ticket email delivery", () => {
       client
     );
 
-    expect(sent).toBe(true);
+    expect(result.ok).toBe(true);
+    expect(result.status).toBe("delivered_to_provider");
+    expect(result.provider_id).toBe("email-1");
     expect(send).toHaveBeenCalledOnce();
     const message = send.mock.calls[0][0];
     expect(message.to).toBe("buyer@example.test");
@@ -65,7 +67,7 @@ describe("ticket email delivery", () => {
   it("does not send paid email when no issued tickets are supplied", async () => {
     configureEmail();
     const send = vi.fn();
-    const sent = await sendEmail(
+    const result = await sendEmail(
       {
         to: "buyer@example.test",
         subject: "",
@@ -75,14 +77,18 @@ describe("ticket email delivery", () => {
       { emails: { send } } as any
     );
 
-    expect(sent).toBe(false);
+    expect(result.ok).toBe(false);
+    expect(result.status).toBe("not_eligible");
     expect(send).not.toHaveBeenCalled();
   });
 
-  it("reports provider failure without throwing", async () => {
+  it("reports provider failure without throwing and classifies sender rejection", async () => {
     configureEmail();
-    const send = vi.fn().mockResolvedValue({ data: null, error: { name: "validation_error" } });
-    const sent = await sendEmail(
+    const send = vi.fn().mockResolvedValue({
+      data: null,
+      error: { name: "validation_error", message: "Domain not verified", statusCode: 403 },
+    });
+    const result = await sendEmail(
       {
         to: "buyer@example.test",
         subject: "",
@@ -92,7 +98,9 @@ describe("ticket email delivery", () => {
       { emails: { send } } as any
     );
 
-    expect(sent).toBe(false);
+    expect(result.ok).toBe(false);
+    expect(result.status).toBe("sender_rejected");
+    expect(result.error).toContain("Sender domain unverified");
   });
 
   it("fails closed when required Resend configuration is missing", async () => {
@@ -102,7 +110,7 @@ describe("ticket email delivery", () => {
     delete process.env.APP_BASE_URL;
     const send = vi.fn();
 
-    const sent = await sendEmail(
+    const result = await sendEmail(
       {
         to: "buyer@example.test",
         subject: "",
@@ -112,7 +120,14 @@ describe("ticket email delivery", () => {
       { emails: { send } } as any
     );
 
-    expect(sent).toBe(false);
+    expect(result.ok).toBe(false);
+    expect(result.status).toBe("config_missing");
     expect(send).not.toHaveBeenCalled();
+  });
+
+  it("correctly classifies rate limits as provider_error", () => {
+    const error = { name: "rate_limit_exceeded", statusCode: 429 };
+    const classification = classifyResendError(error);
+    expect(classification.status).toBe("provider_error");
   });
 });

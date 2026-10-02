@@ -11,7 +11,7 @@ describe("Payment & Ticket State Machine Engine", () => {
   // --- 8.1 Payment Logic Tests ---
   describe("8.1 Payment Logic", () => {
     it("handles exact payment and issues tickets", async () => {
-      // 1. Create order for 2 tickets = 40 THB
+      // 1. Create order for 2 tickets = 98 THB (2 * 49)
       const orderRes = await engine.createOrder({
         buyer_name: "สมหญิง ใจดี",
         phone: "0812345678",
@@ -21,15 +21,15 @@ describe("Payment & Ticket State Machine Engine", () => {
       expect(orderRes.success).toBe(true);
       if (!orderRes.success) return;
       const order = orderRes.order;
-      expect(order.total_thb).toBe(40);
+      expect(order.total_thb).toBe(98);
       expect(order.status).toBe("pending_payment");
 
-      // 2. Add slip for 40 THB
+      // 2. Add slip for 98 THB
       const payment = await engine.addPayment({
         order_id: order.id,
         slip_path: "orders/test/slip1.png",
         slip_sha256: "hash123",
-        amount_thb: 40,
+        amount_thb: 98,
         transferred_at: new Date().toISOString(),
         to_bank: "KBANK",
         payer_name_or_last4: "1234",
@@ -59,7 +59,7 @@ describe("Payment & Ticket State Machine Engine", () => {
     });
 
     it("handles split payments across multiple slips", async () => {
-      // Order 3 tickets = 60 THB
+      // Order 3 tickets = 147 THB (3 * 49)
       const orderRes = await engine.createOrder({
         buyer_name: "มานะ อดทน",
         phone: "0899998877",
@@ -68,13 +68,14 @@ describe("Payment & Ticket State Machine Engine", () => {
       });
       if (!orderRes.success) return;
       const order = orderRes.order;
+      expect(order.total_thb).toBe(147);
 
-      // First slip: 20 THB
+      // First slip: 49 THB
       const p1 = await engine.addPayment({
         order_id: order.id,
         slip_path: "orders/test/p1.png",
         slip_sha256: "hash_p1",
-        amount_thb: 20,
+        amount_thb: 49,
         transferred_at: new Date().toISOString(),
         to_bank: "KBANK",
         payer_name_or_last4: "0001",
@@ -92,12 +93,12 @@ describe("Payment & Ticket State Machine Engine", () => {
       expect(app1.order.expires_at).toBeNull(); // Never shows as expired once partial payment approved!
       expect(app1.ticketsIssued).toBe(0); // No tickets until fully paid
 
-      // Second slip: 40 THB (covers remaining 40 THB)
+      // Second slip: 98 THB (covers remaining 98 THB)
       const p2 = await engine.addPayment({
         order_id: order.id,
         slip_path: "orders/test/p2.png",
         slip_sha256: "hash_p2",
-        amount_thb: 40,
+        amount_thb: 98,
         transferred_at: new Date().toISOString(),
         to_bank: "SCB",
         payer_name_or_last4: "0002",
@@ -122,7 +123,7 @@ describe("Payment & Ticket State Machine Engine", () => {
         buyer_name: "รวย จริงใจ",
         phone: "0811112222",
         email: "rich@example.com",
-        quantity: 1, // 20 THB
+        quantity: 1, // 49 THB
       });
       if (!orderRes.success) return;
       const order = orderRes.order;
@@ -131,7 +132,7 @@ describe("Payment & Ticket State Machine Engine", () => {
         order_id: order.id,
         slip_path: "orders/test/over.png",
         slip_sha256: "hash_over",
-        amount_thb: 50, // paid 50 THB
+        amount_thb: 60, // paid 60 THB
         transferred_at: new Date().toISOString(),
         to_bank: "KBANK",
         payer_name_or_last4: "9999",
@@ -145,7 +146,7 @@ describe("Payment & Ticket State Machine Engine", () => {
       if (!app.success) return;
 
       expect(app.order.status).toBe("paid");
-      expect(app.order.admin_note).toContain("Overpaid: 50 THB vs 20 THB");
+      expect(app.order.admin_note).toContain("Overpaid: 60 THB vs 49 THB");
       expect(app.ticketsIssued).toBe(1);
     });
 
@@ -163,7 +164,7 @@ describe("Payment & Ticket State Machine Engine", () => {
         order_id: order.id,
         slip_path: "orders/test/s.png",
         slip_sha256: "hash_s",
-        amount_thb: 20,
+        amount_thb: 49,
         transferred_at: new Date().toISOString(),
         to_bank: "KBANK",
         payer_name_or_last4: "1111",
@@ -198,7 +199,7 @@ describe("Payment & Ticket State Machine Engine", () => {
         order_id: order.id,
         slip_path: "orders/test/race.png",
         slip_sha256: "hash_race",
-        amount_thb: 40,
+        amount_thb: 98,
         transferred_at: new Date().toISOString(),
         to_bank: "KBANK",
         payer_name_or_last4: "5555",
@@ -227,7 +228,7 @@ describe("Payment & Ticket State Machine Engine", () => {
         buyer_name: "นายสองสลิป",
         phone: "0856789012",
         email: "twoslips@example.com",
-        quantity: 2, // 40 THB
+        quantity: 2, // 98 THB
       });
       if (!orderRes.success) return;
       const order = orderRes.order;
@@ -236,7 +237,7 @@ describe("Payment & Ticket State Machine Engine", () => {
         order_id: order.id,
         slip_path: "p1.png",
         slip_sha256: "h1",
-        amount_thb: 20,
+        amount_thb: 49,
         transferred_at: new Date().toISOString(),
         to_bank: "KBANK",
         payer_name_or_last4: "1111",
@@ -246,7 +247,7 @@ describe("Payment & Ticket State Machine Engine", () => {
         order_id: order.id,
         slip_path: "p2.png",
         slip_sha256: "h2",
-        amount_thb: 20,
+        amount_thb: 49,
         transferred_at: new Date().toISOString(),
         to_bank: "KBANK",
         payer_name_or_last4: "2222",
@@ -290,7 +291,7 @@ describe("Payment & Ticket State Machine Engine", () => {
         order_id: order.id,
         slip_path: "late.png",
         slip_sha256: "hash_late",
-        amount_thb: 20,
+        amount_thb: 49,
         transferred_at: new Date().toISOString(),
         to_bank: "KBANK",
         payer_name_or_last4: "3333",
@@ -327,7 +328,7 @@ describe("Payment & Ticket State Machine Engine", () => {
         order_id: order.id,
         slip_path: "attendee.png",
         slip_sha256: "hash_att",
-        amount_thb: 20,
+        amount_thb: 49,
         transferred_at: new Date().toISOString(),
         to_bank: "KBANK",
         payer_name_or_last4: "4444",
@@ -399,7 +400,7 @@ describe("Payment & Ticket State Machine Engine", () => {
         order_id: order1Res.order.id,
         slip_path: "order1.png",
         slip_sha256: "hash_early",
-        amount_thb: 20,
+        amount_thb: 49,
         transferred_at: new Date().toISOString(),
         to_bank: "KBANK",
         payer_name_or_last4: "8888",
@@ -465,7 +466,7 @@ describe("Payment & Ticket State Machine Engine", () => {
         order_id: orderRes.order.id,
         slip_path: "slip.png",
         slip_sha256: "hash_kitti",
-        amount_thb: 20,
+        amount_thb: 49,
         transferred_at: new Date().toISOString(),
         to_bank: "KBANK",
         payer_name_or_last4: "4444",
