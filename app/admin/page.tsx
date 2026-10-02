@@ -67,6 +67,7 @@ export default function AdminSlipQueuePage() {
   const [rejectReason, setRejectReason] = useState("");
   const [submittingAction, setSubmittingAction] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [emailNotice, setEmailNotice] = useState<string | null>(null);
 
   // Sound generator using Web Audio API (no external file needed)
   const playBeep = () => {
@@ -155,6 +156,14 @@ export default function AdminSlipQueuePage() {
         return;
       }
 
+      if (data.ticket_email_sent === false) {
+        setEmailNotice(
+          "อนุมัติสลิปและออกบัตรแล้ว แต่อีเมล QR ส่งไม่สำเร็จ ให้ผู้ซื้อค้นหาออเดอร์เพื่อเปิดตั๋วและลองส่งอีเมลอีกครั้ง"
+        );
+      } else if (data.ticket_email_sent === true) {
+        setEmailNotice("ส่งคำขออีเมล QR บัตรให้ผู้ให้บริการแล้ว");
+      }
+
       setSelectedItem(null);
       await fetchQueue();
     } catch {
@@ -206,6 +215,19 @@ export default function AdminSlipQueuePage() {
       <StaffHeader pendingCount={queue.length} />
 
       <div className="p-4 sm:p-6 flex flex-col gap-4 flex-1">
+        {emailNotice && (
+          <div
+            className={`p-3 rounded-xl border text-xs ${
+              emailNotice.startsWith("ส่งคำขออีเมล")
+                ? "bg-status-success-subtle border-status-success/30 text-status-success"
+                : "bg-status-warning-subtle border-status-warning/30 text-status-warning"
+            }`}
+            role="status"
+          >
+            {emailNotice}
+          </div>
+        )}
+
         {/* Page Title & Sound Toggle */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
