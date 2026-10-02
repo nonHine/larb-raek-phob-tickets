@@ -262,16 +262,21 @@ export class OrderEngine {
           .eq("code", code)
           .maybeSingle();
 
-        if (data && !error) {
-          const ord = data as Order;
-          if (accessToken && ord.access_token !== accessToken) {
-            return null;
-          }
-          this.orders.set(ord.id, ord);
-          return { ...ord };
+        if (error) {
+          console.error("Supabase getOrderByCode error:", error);
+          return null;
         }
+        if (!data) return null;
+
+        const ord = data as Order;
+        if (accessToken && ord.access_token !== accessToken) {
+          return null;
+        }
+        this.orders.set(ord.id, ord);
+        return { ...ord };
       } catch (err) {
         console.error("Supabase getOrderByCode error:", err);
+        return null;
       }
     }
 
@@ -873,11 +878,11 @@ export class OrderEngine {
           .select("*")
           .eq("order_id", orderId);
 
-        if (data && !error && data.length > 0) {
-          return data as Ticket[];
-        }
+        if (error) throw error;
+        return (data || []) as Ticket[];
       } catch (err) {
         console.error("Supabase getTicketsForOrder error:", err);
+        throw err;
       }
     }
 
