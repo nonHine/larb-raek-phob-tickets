@@ -68,18 +68,23 @@ export async function POST(req: Request) {
     }
 
     // Await delivery dispatch so Vercel can finish the email request before
-    // the function exits. Paid orders receive the issued ticket QR images.
+    // the function exits. Only paid orders with issued tickets receive the ticket QR email.
     const emailResults = await Promise.all(
       matchingOrders.map(async (ord) => {
-        if (!ord.email) return [ord.id, false] as const;
+        if (!ord.email || ord.status !== "paid") {
+          return [ord.id, false] as const;
+        }
 
         try {
-          const isPaid = ord.status === "paid";
-          const tickets = isPaid ? await engine.getTicketsForOrder(ord.id) : undefined;
-          const sent = await sendEmail({
+          const tickets = await engine.getTicketsForOrder(ord.id);
+          if (!tickets || tickets.length === 0) {
+            return [ord.id, false] as const;
+          }
+
+          const result: any = await sendEmail({
             to: ord.email,
-            subject: `[กู้คืนลิงก์] คำสั่งซื้อ #${ord.code}`,
-            template: isPaid ? "paid" : "order_created",
+            subject: "",
+            template: "paid",
             data: {
               buyer_name: ord.buyer_name,
               order_code: ord.code,
@@ -88,6 +93,7 @@ export async function POST(req: Request) {
               tickets,
             },
           });
+          const sent = typeof result === "boolean" ? result : Boolean(result?.ok);
           return [ord.id, sent] as const;
         } catch (err) {
           console.error("[EMAIL ERROR] Order recovery email failed", {

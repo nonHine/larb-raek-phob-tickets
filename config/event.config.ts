@@ -28,7 +28,7 @@ export const EVENT: EventConfig = {
   startsAt: "9 พ.ย. 2026 เวลา 16:00 น.",
   doorsOpenAt: "16:00 น.",
   orderCodePrefix: "LRP",
-  ticketPriceThb: 20,
+  ticketPriceThb: 49,
   maxTicketsPerOrder: 100,
   orderExpiryMinutes: 30,
   banks: [
