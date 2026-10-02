@@ -89,8 +89,35 @@ export async function POST(
       );
     }
 
-    // 2. Order level checks: check max slips per order (10)
+    if (order.status === "cancelled") {
+      return NextResponse.json(
+        { error: "order_cancelled", message: "คำสั่งซื้อนี้ถูกยกเลิกแล้ว" },
+        { status: 410 }
+      );
+    }
+
+    // 2. Order level checks: check max slips per order (10) and expiry
     const existingPayments = await engine.getPaymentsForOrder(order.id);
+
+    // BUG-002: Enforce 30-minute order expiry if no approved or pending payments exist
+    const hasApprovedOrPending = existingPayments.some(
+      (p) => p.status === "approved" || p.status === "pending"
+    );
+    if (
+      !hasApprovedOrPending &&
+      order.expires_at &&
+      new Date(order.expires_at).getTime() < Date.now()
+    ) {
+      return NextResponse.json(
+        {
+          error: "order_expired",
+          message:
+            "คำสั่งซื้อนี้หมดอายุแล้ว (เกินกำหนด 30 นาที) กรุณาทำรายการสั่งซื้อใหม่",
+        },
+        { status: 410 }
+      );
+    }
+
     if (existingPayments.length >= 10) {
       return NextResponse.json(
         {
@@ -139,6 +166,18 @@ export async function POST(
     // 5. SHA-256 Hash
     const sha256 = crypto.createHash("sha256").update(buffer).digest("hex");
 
+    // BUG-004: Anti-fraud duplicate slip check
+    const isDuplicate = await engine.isSlipDuplicate(sha256, order.id);
+    if (isDuplicate) {
+      return NextResponse.json(
+        {
+          error: "duplicate_slip",
+          message: "สลิปนี้เคยถูกส่งเข้าระบบแล้ว กรุณาตรวจสอบภาพสลิปที่แนบ",
+        },
+        { status: 409 }
+      );
+    }
+
     // 6. Amount validation
     const amount = Number(amountStr);
     if (isNaN(amount) || amount <= 0) {
@@ -164,7 +203,7 @@ export async function POST(
       if (!uploadErr) {
         const { data: signedData } = await supabaseAdmin.storage
           .from("Slips")
-          .createSignedUrl(slipPath, 60 * 60 * 24); // 24 hours
+          .createSignedUrl(slipPath, 60 * 60 * 2); // SEC-004: 2 hours instead of 24h
         if (signedData?.signedUrl) {
           slipUrl = signedData.signedUrl;
         }
@@ -179,27 +218,46 @@ export async function POST(
     }
 
     // 8. Add payment to engine
-    const payment = await engine.addPayment({
-      order_id: order.id,
-      slip_path: slipPath,
-      slip_sha256: sha256,
-      amount_thb: amount,
-      transferred_at: transferredAt,
-      to_bank: toBank,
-      payer_name_or_last4: payerNameOrLast4,
-      slip_url: slipUrl,
-    });
+    try {
+      const payment = await engine.addPayment({
+        order_id: order.id,
+        slip_path: slipPath,
+        slip_sha256: sha256,
+        amount_thb: amount,
+        transferred_at: transferredAt,
+        to_bank: toBank,
+        payer_name_or_last4: payerNameOrLast4,
+        slip_url: slipUrl,
+      });
 
-    return NextResponse.json({
-      success: true,
-      message: "เราได้รับสลิปแล้ว อยู่ระหว่างตรวจสอบ",
-      payment: {
-        id: payment.id,
-        amount_thb: payment.amount_thb,
-        status: payment.status,
-        created_at: payment.created_at,
-      },
-    });
+      return NextResponse.json({
+        success: true,
+        message: "เราได้รับสลิปแล้ว อยู่ระหว่างตรวจสอบ",
+        payment: {
+          id: payment.id,
+          amount_thb: payment.amount_thb,
+          status: payment.status,
+          created_at: payment.created_at,
+        },
+      });
+    } catch (err: any) {
+      if (err.message === "duplicate_slip") {
+        return NextResponse.json(
+          {
+            error: "duplicate_slip",
+            message: "สลิปนี้เคยถูกส่งเข้าระบบแล้ว กรุณาตรวจสอบภาพสลิป",
+          },
+          { status: 409 }
+        );
+      }
+      return NextResponse.json(
+        {
+          error: "payment_failed",
+          message: "ไม่สามารถบันทึกข้อมูลสลิปได้ กรุณาลองใหม่อีกครั้ง",
+        },
+        { status: 500 }
+      );
+    }
   } catch (err: any) {
     return NextResponse.json(
       { error: err.message || "Failed to process slip upload" },

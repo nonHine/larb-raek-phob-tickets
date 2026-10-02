@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { engine } from "@/lib/engine";
+import { getVerifiedStaffSession } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -20,8 +21,20 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { is_full, staff_id } = body;
+    // SEC-001 Fix: Enforce verified Admin session on POST
+    const session = await getVerifiedStaffSession(req);
+    if (!session.valid || session.role !== "admin") {
+      return NextResponse.json(
+        {
+          error: "unauthorized",
+          message: "ต้องใช้สิทธิ์ Admin PIN ในการเปลี่ยนสถานะร้านค้า",
+        },
+        { status: 401 }
+      );
+    }
+
+    const body = await req.json().catch(() => ({}));
+    const { is_full } = body;
 
     if (typeof is_full !== "boolean") {
       return NextResponse.json(
@@ -30,10 +43,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const updated = await engine.setVenueFull(
-      is_full,
-      staff_id || "staff-anonymous"
-    );
+    const updated = await engine.setVenueFull(is_full, session.staffId);
 
     return NextResponse.json({
       success: true,

@@ -85,6 +85,7 @@ export default function OrderStatusPage({
   const [payerNameOrLast4, setPayerNameOrLast4] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [networkError, setNetworkError] = useState(false);
 
   const fetchOrderData = async () => {
     if (!token) {
@@ -94,9 +95,14 @@ export default function OrderStatusPage({
     }
 
     try {
+      setNetworkError(false);
       const res = await fetch(`/api/orders/${params.code}?t=${token}`);
       if (!res.ok) {
-        setNotFound(true);
+        if (res.status === 404 || res.status === 403) {
+          setNotFound(true);
+        } else {
+          setNetworkError(true);
+        }
         setLoading(false);
         return;
       }
@@ -116,7 +122,7 @@ export default function OrderStatusPage({
         setTickets(ticketList);
       }
     } catch {
-      setNotFound(true);
+      setNetworkError(true);
     } finally {
       setLoading(false);
     }
@@ -193,6 +199,31 @@ export default function OrderStatusPage({
         <div className="flex-1 flex flex-col items-center justify-center p-6 gap-3">
           <Loader2 className="w-8 h-8 text-brand animate-spin" />
           <span className="text-sm text-content-muted">กำลังโหลดข้อมูลสถานะคำสั่งซื้อ...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (networkError) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Navbar />
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center gap-3">
+          <AlertCircle className="w-12 h-12 text-status-warning" />
+          <h1 className="text-xl font-bold text-content">สัญญาณเครือข่ายขัดข้อง</h1>
+          <p className="text-sm text-content-muted max-w-xs">
+            ไม่สามารถเชื่อมต่อระบบได้ชั่วคราว กรุณาตรวจสอบอินเทอร์เน็ตแล้วกดลองใหม่อีกครั้ง
+          </p>
+          <button
+            onClick={() => {
+              setLoading(true);
+              setNetworkError(false);
+              fetchOrderData();
+            }}
+            className="mt-2 px-5 py-2.5 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand-pressed transition-colors shadow-sm"
+          >
+            กดลองใหม่อีกครั้ง
+          </button>
         </div>
       </div>
     );
@@ -338,10 +369,13 @@ export default function OrderStatusPage({
               )}
             </div>
 
-            <div className="p-3 rounded-xl bg-status-success-subtle border border-status-success/30 text-status-success text-xs flex items-start gap-2">
-              <ShieldCheck className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <div className="p-3.5 rounded-xl bg-status-success-subtle border border-status-success/30 text-status-success text-xs flex flex-col gap-1.5 leading-relaxed">
+              <div className="flex items-center gap-1.5 font-bold">
+                <ShieldCheck className="w-4 h-4 flex-shrink-0" />
+                <span>คำแนะนำสำคัญสำหรับวันงาน (7 ต.ค.)</span>
+              </div>
               <span>
-                แสดง QR Code ด้านล่างนี้ที่จุดลงทะเบียนหน้างาน สตาฟจะสแกน 1 ครั้งเพื่อมอบสายรัดข้อมือ (wristband) สำหรับเข้างาน
+                สตาฟจะสแกน QR Code 1 ครั้งเพื่อมอบสายรัดข้อมือ (Wristband) เข้างาน • <strong>แนะนำให้กดปุ่มบันทึกตั๋ว หรือแคปหน้าจอ (Screenshot) ตั๋วเก็บไว้ในมือถือก่อนเดินทางมาถึงร้าน</strong> เผื่อบริเวณงานสัญญาณมือถือไม่เสถียร
               </span>
             </div>
 

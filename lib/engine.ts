@@ -240,9 +240,19 @@ export class OrderEngine {
 
         if (error) {
           console.error("Supabase createOrder insert error:", error);
+          return {
+            success: false,
+            error: "database_error",
+            message: "ไม่สามารถบันทึกคำสั่งซื้อลงฐานข้อมูลได้ กรุณาลองใหม่อีกครั้ง",
+          } as any;
         }
       } catch (err) {
         console.error("Supabase createOrder exception:", err);
+        return {
+          success: false,
+          error: "database_error",
+          message: "เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล กรุณาลองใหม่อีกครั้ง",
+        } as any;
       }
     }
 
@@ -359,12 +369,20 @@ export class OrderEngine {
     const q = query.trim();
     if (!q) return [];
 
+    const cleanDigits = q.replace(/\D/g, "");
+
     if (this.isSupabaseReady()) {
       try {
+        const phoneFilter =
+          cleanDigits && cleanDigits.length >= 4
+            ? `,phone.ilike.%${cleanDigits}%`
+            : "";
         const { data, error } = await supabaseAdmin
           .from("orders")
           .select("*")
-          .or(`code.ilike.%${q}%,buyer_name.ilike.%${q}%,phone.ilike.%${q}%,email.ilike.%${q}%`)
+          .or(
+            `code.ilike.%${q}%,buyer_name.ilike.%${q}%,email.ilike.%${q}%${phoneFilter}`
+          )
           .order("created_at", { ascending: false })
           .limit(50);
 
@@ -384,10 +402,15 @@ export class OrderEngine {
     const qLower = q.toLowerCase();
     const list: Order[] = [];
     for (const order of this.orders.values()) {
+      const orderPhoneDigits = order.phone.replace(/\D/g, "");
+      const phoneMatched =
+        order.phone.includes(q) ||
+        (cleanDigits.length >= 4 && orderPhoneDigits.includes(cleanDigits));
+
       if (
         order.code.toLowerCase().includes(qLower) ||
         order.buyer_name.toLowerCase().includes(qLower) ||
-        order.phone.includes(q) ||
+        phoneMatched ||
         order.email.toLowerCase().includes(qLower)
       ) {
         list.push({ ...order });
@@ -466,7 +489,7 @@ export class OrderEngine {
 
       if (this.isSupabaseReady()) {
         try {
-          await supabaseAdmin.from("payments").insert({
+          const { error } = await supabaseAdmin.from("payments").insert({
             id: payment.id,
             order_id: payment.order_id,
             slip_path: payment.slip_path,
@@ -479,14 +502,23 @@ export class OrderEngine {
             created_at: payment.created_at,
           });
 
+          if (error) {
+            console.error("Supabase addPayment insert error:", error);
+            if (error.code === "23505" || error.message?.includes("duplicate")) {
+              throw new Error("duplicate_slip");
+            }
+            throw new Error("database_error");
+          }
+
           if (order.status === "pending_payment") {
             await supabaseAdmin
               .from("orders")
               .update({ status: "under_review" })
               .eq("id", order.id);
           }
-        } catch (err) {
+        } catch (err: any) {
           console.error("Supabase addPayment error:", err);
+          throw err;
         }
       }
 
@@ -570,6 +602,18 @@ export class OrderEngine {
     return list;
   }
 
+  public async isSlipDuplicate(
+    sha256: string,
+    excludeOrderId?: string
+  ): Promise<boolean> {
+    const existing = await this.findDuplicatePayments(sha256);
+    return existing.some(
+      (p) =>
+        p.status !== "rejected" &&
+        (!excludeOrderId || p.order_id !== excludeOrderId)
+    );
+  }
+
   // --- Payment Approval (Idempotent & Concurrency Safe) ---
   public async approvePayment(params: {
     payment_id: string;
@@ -649,7 +693,7 @@ export class OrderEngine {
 
       if (this.isSupabaseReady()) {
         try {
-          await supabaseAdmin
+          const { data, error } = await supabaseAdmin
             .from("payments")
             .update({
               status: "approved",
@@ -657,7 +701,17 @@ export class OrderEngine {
               reviewed_by: toUuid(params.reviewer_id),
               reviewed_at: now,
             })
-            .eq("id", currentPayment.id);
+            .eq("id", currentPayment.id)
+            .eq("status", "pending")
+            .select();
+
+          if (error || !data || data.length === 0) {
+            return {
+              success: false,
+              error: "already_reviewed",
+              payment: { ...currentPayment },
+            };
+          }
 
           await supabaseAdmin.from("audit_log").insert({
             actor: toUuid(params.reviewer_id),
@@ -669,6 +723,11 @@ export class OrderEngine {
           });
         } catch (err) {
           console.error("Supabase approvePayment update error:", err);
+          return {
+            success: false,
+            error: "already_reviewed",
+            payment: { ...currentPayment },
+          };
         }
       }
 
@@ -1000,7 +1059,8 @@ export class OrderEngine {
         checked_in_by?: string;
       }
   > {
-    const ticket = await this.getTicketByCode(code);
+    const cleanCode = code.trim().toUpperCase();
+    const ticket = await this.getTicketByCode(cleanCode);
     if (!ticket) {
       return { success: false, error: "invalid_ticket" };
     }
@@ -1020,21 +1080,40 @@ export class OrderEngine {
     }
 
     const now = new Date().toISOString();
-    ticket.status = "checked_in";
-    ticket.checked_in_at = now;
-    ticket.checked_in_by = staffId;
-    this.tickets.set(ticket.id, { ...ticket });
 
     if (this.isSupabaseReady()) {
       try {
-        await supabaseAdmin
+        // Atomic conditional update in database: ONLY succeeds if status is still 'issued'
+        const { data, error } = await supabaseAdmin
           .from("tickets")
           .update({
             status: "checked_in",
             checked_in_at: now,
             checked_in_by: toUuid(staffId),
           })
-          .eq("id", ticket.id);
+          .eq("id", ticket.id)
+          .eq("status", "issued")
+          .select();
+
+        if (error) {
+          console.error("Supabase checkInTicket atomic update error:", error);
+          return { success: false, error: "invalid_ticket" };
+        }
+
+        if (!data || data.length === 0) {
+          // Concurrency collision: another scanner already checked in this ticket!
+          const latest = await this.getTicketByCode(cleanCode);
+          return {
+            success: false,
+            error: "already_checked_in",
+            ticket: latest ? { ...latest } : { ...ticket, status: "checked_in" },
+            checked_in_at: latest?.checked_in_at || now,
+            checked_in_by: latest?.checked_in_by || undefined,
+          };
+        }
+
+        const updatedTicket = data[0] as Ticket;
+        this.tickets.set(updatedTicket.id, { ...updatedTicket });
 
         await supabaseAdmin.from("audit_log").insert({
           actor: toUuid(staffId),
@@ -1044,22 +1123,46 @@ export class OrderEngine {
           meta: { code: ticket.code },
           created_at: now,
         });
+
+        return { success: true, ticket: { ...updatedTicket } };
       } catch (err) {
-        console.error("Supabase checkInTicket update error:", err);
+        console.error("Supabase checkInTicket exception:", err);
+        return { success: false, error: "invalid_ticket" };
       }
     }
 
-    this.auditLogs.push({
-      id: this.auditLogs.length + 1,
-      actor: staffId,
-      action: "check_in_ticket",
-      entity: "ticket",
-      entity_id: ticket.id,
-      meta: { code: ticket.code },
-      created_at: now,
-    });
+    // In-memory fallback (under lock)
+    const releaseLock = await this.acquireLock(ticket.id);
+    try {
+      const current = this.tickets.get(ticket.id);
+      if (!current || current.status !== "issued") {
+        return {
+          success: false,
+          error: "already_checked_in",
+          ticket: current ? { ...current } : { ...ticket, status: "checked_in" },
+          checked_in_at: current?.checked_in_at || now,
+          checked_in_by: current?.checked_in_by || undefined,
+        };
+      }
+      current.status = "checked_in";
+      current.checked_in_at = now;
+      current.checked_in_by = staffId;
+      this.tickets.set(current.id, { ...current });
 
-    return { success: true, ticket: { ...ticket } };
+      this.auditLogs.push({
+        id: this.auditLogs.length + 1,
+        actor: staffId,
+        action: "check_in_ticket",
+        entity: "ticket",
+        entity_id: ticket.id,
+        meta: { code: ticket.code },
+        created_at: now,
+      });
+
+      return { success: true, ticket: { ...current } };
+    } finally {
+      releaseLock();
+    }
   }
 
   // --- Admin Cancel Order ---
