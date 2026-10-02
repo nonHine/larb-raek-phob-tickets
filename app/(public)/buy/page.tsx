@@ -53,8 +53,9 @@ export default function BuyPage() {
     if (!/^0[0-9]{9}$/.test(phone.trim())) {
       errs.phone = "กรุณากรอกหมายเลขโทรศัพท์ 10 หลัก (เช่น 0812345678)";
     }
-    if (!email.trim() || !email.includes("@")) {
-      errs.email = "กรุณากรอกอีเมลที่ถูกต้องเพื่อรับข้อมูลออเดอร์";
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email.trim() || !emailRegex.test(email.trim())) {
+      errs.email = "กรุณากรอกอีเมลให้ถูกต้อง (เช่น name@example.com)";
     }
     if (!consentNonRefundable) {
       errs.consentNonRefundable = "กรุณายอมรับเงื่อนไขบัตรไม่สามารถขอคืนเงินได้";
@@ -241,7 +242,7 @@ export default function BuyPage() {
 
         {/* STEP 2: CONTACT & CONSENT */}
         {step === 2 && !isFull && (
-          <form onSubmit={handleNextFromStep2} className="flex flex-col gap-5">
+          <form onSubmit={handleNextFromStep2} noValidate className="flex flex-col gap-5">
             <div>
               <h1 className="text-xl font-bold text-content">ข้อมูลผู้ซื้อ</h1>
               <p className="text-xs text-content-muted mt-1">
