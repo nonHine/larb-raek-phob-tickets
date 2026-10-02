@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { engine } from "@/lib/engine";
+import { sendEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -33,11 +34,37 @@ export async function POST(
       return NextResponse.json({ error: res.error }, { status: 400 });
     }
 
+    let ticketEmailSent: boolean | null = null;
+    if (res.order.status === "paid" && res.ticketsIssued > 0) {
+      try {
+        const tickets = await engine.getTicketsForOrder(res.order.id);
+        ticketEmailSent = await sendEmail({
+          to: res.order.email,
+          subject: "",
+          template: "paid",
+          data: {
+            buyer_name: res.order.buyer_name,
+            order_code: res.order.code,
+            access_token: res.order.access_token,
+            quantity: res.order.quantity,
+            tickets,
+          },
+        });
+      } catch (err) {
+        console.error("[EMAIL ERROR] Ticket email preparation failed", {
+          order_code: res.order.code,
+          error_name: err instanceof Error ? err.name : "UnknownError",
+        });
+        ticketEmailSent = false;
+      }
+    }
+
     return NextResponse.json({
       success: true,
       message: "อนุมัติสลิปสำเร็จ",
       order_status: res.order.status,
       tickets_issued: res.ticketsIssued,
+      ticket_email_sent: ticketEmailSent,
     });
   } catch (err: any) {
     return NextResponse.json(

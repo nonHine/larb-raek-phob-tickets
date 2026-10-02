@@ -67,23 +67,38 @@ export async function POST(req: Request) {
       );
     }
 
-    // Attempt to dispatch email in the background for each found order
-    for (const ord of matchingOrders) {
-      if (ord.email) {
-        const isPaid = ord.status === "paid";
-        sendEmail({
-          to: ord.email,
-          subject: `[กู้คืนลิงก์] คำสั่งซื้อ #${ord.code}`,
-          template: isPaid ? "paid" : "order_created",
-          data: {
-            buyer_name: ord.buyer_name,
+    // Await delivery dispatch so Vercel can finish the email request before
+    // the function exits. Paid orders receive the issued ticket QR images.
+    const emailResults = await Promise.all(
+      matchingOrders.map(async (ord) => {
+        if (!ord.email) return [ord.id, false] as const;
+
+        try {
+          const isPaid = ord.status === "paid";
+          const tickets = isPaid ? await engine.getTicketsForOrder(ord.id) : undefined;
+          const sent = await sendEmail({
+            to: ord.email,
+            subject: `[กู้คืนลิงก์] คำสั่งซื้อ #${ord.code}`,
+            template: isPaid ? "paid" : "order_created",
+            data: {
+              buyer_name: ord.buyer_name,
+              order_code: ord.code,
+              access_token: ord.access_token,
+              quantity: ord.quantity,
+              tickets,
+            },
+          });
+          return [ord.id, sent] as const;
+        } catch (err) {
+          console.error("[EMAIL ERROR] Order recovery email failed", {
             order_code: ord.code,
-            access_token: ord.access_token,
-            quantity: ord.quantity,
-          },
-        }).catch(() => {});
-      }
-    }
+            error_name: err instanceof Error ? err.name : "UnknownError",
+          });
+          return [ord.id, false] as const;
+        }
+      })
+    );
+    const emailSentByOrderId = new Map(emailResults);
 
     // Format safe response for on-screen recovery
     const formattedOrders = matchingOrders.map((ord) => {
@@ -113,6 +128,7 @@ export async function POST(req: Request) {
         status: ord.status,
         status_label: statusLabel,
         url: targetUrl,
+        email_sent: emailSentByOrderId.get(ord.id) || false,
         created_at: ord.created_at,
       };
     });

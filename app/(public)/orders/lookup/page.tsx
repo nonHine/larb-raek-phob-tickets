@@ -26,6 +26,7 @@ interface FoundOrder {
   status: "pending_payment" | "under_review" | "paid" | "cancelled";
   status_label: string;
   url: string;
+  email_sent: boolean;
   created_at: string;
 }
 
@@ -298,6 +299,15 @@ export default function OrderLookupPage() {
                     </span>
                   </div>
                 </div>
+
+                <p
+                  className={`text-xs ${ord.email_sent ? "text-status-success" : "text-status-warning"}`}
+                  role="status"
+                >
+                  {ord.email_sent
+                    ? "ส่งคำขออีเมลไปยังที่อยู่ที่บันทึกไว้แล้ว"
+                    : "ส่งอีเมลไม่สำเร็จ คุณยังเปิดดูตั๋วได้จากปุ่มด้านล่าง"}
+                </p>
 
                 <Link
                   href={ord.url}
