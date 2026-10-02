@@ -41,7 +41,7 @@ export const EVENT: EventConfig = {
   branding: {
     primary: "#8F1D2D",
     primaryPressed: "#741725",
-    logoPath: "/logo.svg",
+    logoPath: "/Logo.jpg",
     slogan: "ดนตรีสด ลาบก้อย บรรยากาศเป็นกันเอง",
   },
 };
