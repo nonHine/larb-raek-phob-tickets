@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { StaffHeader } from "@/components/admin/StaffHeader";
 import {
   Clock,
@@ -89,7 +89,11 @@ export default function AdminSlipQueuePage() {
     }
   };
 
-  const fetchQueue = async () => {
+  const isFetchingRef = useRef(false);
+
+  const fetchQueue = useCallback(async () => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
     try {
       const res = await fetch("/api/admin/slips", { cache: "no-store" });
       if (!res.ok) {
@@ -110,14 +114,23 @@ export default function AdminSlipQueuePage() {
       setQueueError(error instanceof Error ? error.message : "โหลดคิวตรวจสลิปไม่สำเร็จ");
     } finally {
       setLoading(false);
+      isFetchingRef.current = false;
     }
-  };
+  }, [soundEnabled]);
 
   useEffect(() => {
+    let isMounted = true;
     fetchQueue();
-    const interval = setInterval(fetchQueue, 5000); // 5-second polling
-    return () => clearInterval(interval);
-  }, [soundEnabled]);
+    const interval = setInterval(() => {
+      if (isMounted) {
+        fetchQueue();
+      }
+    }, 5000); // 5-second non-overlapping polling
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [fetchQueue]);
 
   const handleOpenReview = (item: QueueItem) => {
     setSelectedItem(item);
