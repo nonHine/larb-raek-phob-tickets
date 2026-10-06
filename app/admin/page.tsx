@@ -56,6 +56,7 @@ interface QueueItem {
 export default function AdminSlipQueuePage() {
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [queueError, setQueueError] = useState<string | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const prevCountRef = useRef(0);
 
@@ -91,19 +92,22 @@ export default function AdminSlipQueuePage() {
   const fetchQueue = async () => {
     try {
       const res = await fetch("/api/admin/slips", { cache: "no-store" });
-      if (res.ok) {
-        const data = await res.json();
-        const items: QueueItem[] = data.queue || [];
-        setQueue(items);
-
-        // Sound trigger when new slips arrive
-        if (soundEnabled && items.length > prevCountRef.current) {
-          playBeep();
-        }
-        prevCountRef.current = items.length;
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "โหลดคิวตรวจสลิปไม่สำเร็จ");
       }
-    } catch {
-      // Keep state on failure
+      const data = await res.json();
+      const items: QueueItem[] = data.queue || [];
+      setQueue(items);
+      setQueueError(null);
+
+      // Sound trigger when new slips arrive
+      if (soundEnabled && items.length > prevCountRef.current) {
+        playBeep();
+      }
+      prevCountRef.current = items.length;
+    } catch (error) {
+      setQueueError(error instanceof Error ? error.message : "โหลดคิวตรวจสลิปไม่สำเร็จ");
     } finally {
       setLoading(false);
     }
@@ -158,11 +162,13 @@ export default function AdminSlipQueuePage() {
 
       if (data.ticket_email_sent === false) {
         const reasonText = data.ticket_email_reason ? ` (${data.ticket_email_reason})` : "";
-        setEmailNotice(
-          `อนุมัติสลิปและออกบัตรแล้ว${reasonText} แต่อีเมล QR ส่งไม่สำเร็จ ให้ผู้ซื้อเปิดตั๋วผ่านหน้าค้นหาออเดอร์ในเว็บแทน`
-        );
+        setEmailNotice(data.order_status === "paid"
+          ? `อนุมัติสลิปและออกบัตรแล้ว${reasonText} แต่อีเมลยืนยันส่งไม่สำเร็จ ให้ผู้ซื้อเปิดตั๋วจากหน้าออเดอร์`
+          : `ตรวจยอดบางส่วนแล้ว${reasonText} แต่อีเมลแจ้งผลส่งไม่สำเร็จ ให้ผู้ซื้อเปิดหน้าออเดอร์ตรวจยอดคงเหลือ`);
       } else if (data.ticket_email_sent === true) {
-        setEmailNotice("ส่งคำขออีเมล QR บัตรให้ผู้ให้บริการแล้ว");
+        setEmailNotice(data.order_status === "paid"
+          ? "อนุมัติยอดครบแล้ว และส่งอีเมลยืนยันพร้อมบัตรให้ผู้ให้บริการแล้ว"
+          : "ตรวจและอนุมัติยอดบางส่วนแล้ว พร้อมส่งอีเมลแจ้งยอดคงเหลือให้ผู้ซื้อแล้ว");
       }
 
       setSelectedItem(null);
@@ -202,6 +208,9 @@ export default function AdminSlipQueuePage() {
         return;
       }
 
+      setEmailNotice(data.ticket_email_sent
+        ? "ปฏิเสธสลิปและส่งอีเมลแจ้งเหตุผลให้ผู้ซื้อแล้ว"
+        : `ปฏิเสธสลิปแล้ว แต่อีเมลแจ้งผลส่งไม่สำเร็จ${data.ticket_email_reason ? ` (${data.ticket_email_reason})` : ""}`);
       setSelectedItem(null);
       await fetchQueue();
     } catch {
@@ -268,10 +277,25 @@ export default function AdminSlipQueuePage() {
           รายการสลิปที่รอตรวจสอบ เรียงลำดับจากเก่าสุดก่อน (อัปเดตอัตโนมัติทุก 5 วินาที)
         </p>
 
+        {queueError && (
+          <div className="p-3 rounded-xl border border-status-danger/30 bg-status-danger-subtle text-status-danger text-sm" role="alert">
+            <div className="flex items-center justify-between gap-3">
+              <span>โหลดคิวสลิปไม่สำเร็จ: {queueError}</span>
+              <button type="button" onClick={fetchQueue} className="font-semibold underline">ลองใหม่</button>
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div className="flex flex-col items-center justify-center p-12 gap-2 text-content-muted">
             <Loader2 className="w-6 h-6 animate-spin text-brand" />
             <span className="text-xs">กำลังโหลดคิวสลิป...</span>
+          </div>
+        ) : queueError ? (
+          <div className="p-8 rounded-2xl border border-dashed border-status-danger/40 bg-surface text-center flex flex-col items-center gap-2 my-auto">
+            <AlertTriangle className="w-10 h-10 text-status-danger" />
+            <h3 className="font-semibold text-content text-sm">ยังยืนยันไม่ได้ว่าคิวว่าง</h3>
+            <p className="text-xs text-content-muted max-w-xs">แก้ปัญหาการเชื่อมต่อแล้วกด “ลองใหม่” เพื่อโหลดรายการสลิป</p>
           </div>
         ) : queue.length === 0 ? (
           <div className="p-8 rounded-2xl border border-dashed border-border bg-surface text-center flex flex-col items-center gap-2 my-auto">

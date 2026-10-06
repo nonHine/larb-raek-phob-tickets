@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { engine } from "@/lib/engine";
 import { EVENT } from "@/config/event.config";
+import { sendEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -79,6 +80,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: res.error }, { status: 400 });
     }
 
+    // The order is already safely stored. Email failure must not undo the order;
+    // report the outcome while always returning the buyer to checkout.
+    const emailResult = await sendEmail({
+      to: res.order.email,
+      subject: "",
+      template: "order_created",
+      data: {
+        buyer_name: res.order.buyer_name,
+        order_code: res.order.code,
+        access_token: res.order.access_token,
+        quantity: res.order.quantity,
+      },
+    });
+
     return NextResponse.json({
       success: true,
       order: {
@@ -88,6 +103,8 @@ export async function POST(req: Request) {
         quantity: res.order.quantity,
       },
       redirect_url: `/checkout/${res.order.code}?t=${res.order.access_token}`,
+      email_sent: emailResult.ok,
+      email_status: emailResult.status,
     });
   } catch (err: any) {
     return NextResponse.json(

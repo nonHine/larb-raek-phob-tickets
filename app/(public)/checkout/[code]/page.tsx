@@ -72,6 +72,7 @@ export default function CheckoutPage({
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadEmailMessage, setUploadEmailMessage] = useState<string | null>(null);
 
   // 1. Fetch Order details
   useEffect(() => {
@@ -209,6 +210,7 @@ export default function CheckoutPage({
         return;
       }
 
+      setUploadEmailMessage(data.email_message || "โปรดรอสักครู่ พนักงานกำลังตรวจสอบสลิป และจะแจ้งผลทางอีเมลอีกครั้ง");
       setUploadSuccess(true);
       // Wait 1.5s and route to order status page
       setTimeout(() => {
@@ -422,7 +424,7 @@ export default function CheckoutPage({
               <div className="flex flex-col">
                 <span className="font-semibold">ส่งสลิปสำเร็จ!</span>
                 <span className="text-xs mt-0.5">
-                  เราได้รับสลิปแล้ว กำลังพาท่านไปหน้าสถานะออเดอร์...
+                  {uploadEmailMessage || "โปรดรอสักครู่ พนักงานกำลังตรวจสอบสลิป และจะแจ้งผลทางอีเมลอีกครั้ง"} กำลังพาท่านไปหน้าสถานะออเดอร์...
                 </span>
               </div>
             </div>

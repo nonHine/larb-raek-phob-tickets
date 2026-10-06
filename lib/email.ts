@@ -133,11 +133,11 @@ async function buildTemplate(params: SendEmailParams, orderUrl: string, checkout
   switch (params.template) {
     case "order_created":
       subject = `[${EVENT.name}] ยืนยันคำสั่งซื้อบัตร #${order_code}`;
-      text = `สวัสดีคุณ ${buyer_name},\n\nคำสั่งซื้อบัตรงาน "${EVENT.name}" ของคุณถูกสร้างเรียบร้อยแล้ว (จำนวน ${quantity} ใบ)\nกรุณาชำระเงินและแนบสลิปได้ที่:\n${checkoutUrl}\n\nขอบคุณครับ`;
+      text = `สวัสดีคุณ ${buyer_name},\n\nระบบได้รับคำสั่งซื้อบัตรงาน "${EVENT.name}" ของคุณแล้ว จำนวน ${quantity} ใบ\nกรุณาชำระเงินและแนบสลิปได้ที่:\n${checkoutUrl}\nหลังจากแนบสลิปแล้ว โปรดรอสักครู่ให้พนักงานตรวจสอบ เมื่อการตรวจเสร็จสิ้น ระบบจะส่งอีเมลแจ้งผลและยืนยันบัตรให้คุณอีกครั้ง\n\nขอบคุณครับ`;
       break;
     case "slip_received":
       subject = `[${EVENT.name}] เราได้รับสลิปการโอนเงินของออเดอร์ #${order_code} แล้ว`;
-      text = `สวัสดีคุณ ${buyer_name},\n\nเราได้รับสลิปการโอนเงินของคุณแล้ว ขณะนี้อยู่ระหว่างการตรวจสอบโดยทีมงานสตาฟ\nท่านสามารถติดตามสถานะได้ที่:\n${orderUrl}`;
+      text = `สวัสดีคุณ ${buyer_name},\n\nเราได้รับสลิปการโอนเงินของคำสั่งซื้อ #${order_code} แล้ว โปรดรอสักครู่ ขณะนี้พนักงานกำลังตรวจสอบ เมื่อการตรวจเสร็จสิ้น เราจะส่งอีเมลยืนยันผลให้คุณอีกครั้ง\nท่านสามารถติดตามสถานะได้ที่:\n${orderUrl}`;
       break;
     case "paid": {
       const tickets = params.data.tickets || [];
@@ -199,6 +199,9 @@ function createDefaultTransporter(): SmtpTransportLike {
     host,
     port,
     secure,
+    connectionTimeout: 8_000,
+    greetingTimeout: 8_000,
+    socketTimeout: 12_000,
     auth: {
       user,
       pass,

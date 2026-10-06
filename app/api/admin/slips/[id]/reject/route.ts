@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { engine } from "@/lib/engine";
+import { sendEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -39,10 +40,25 @@ export async function POST(
       return NextResponse.json({ error: res.error }, { status: 400 });
     }
 
+    const emailResult = await sendEmail({
+      to: res.order.email,
+      subject: "",
+      template: "slip_rejected",
+      data: {
+        buyer_name: res.order.buyer_name,
+        order_code: res.order.code,
+        access_token: res.order.access_token,
+        reject_reason: reason.trim(),
+      },
+    });
+
     return NextResponse.json({
       success: true,
       message: "ปฏิเสธสลิปเรียบร้อย",
       order_status: res.order.status,
+      ticket_email_sent: emailResult.ok,
+      ticket_email_status: emailResult.status,
+      ticket_email_reason: emailResult.error || null,
     });
   } catch (err: any) {
     return NextResponse.json(

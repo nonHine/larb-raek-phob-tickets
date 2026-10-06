@@ -312,7 +312,7 @@ export class OrderEngine {
 
         if (error) {
           console.error("Supabase getOrderById error:", error);
-          return null;
+          throw new Error("database_error");
         }
         if (!data) return null;
 
@@ -321,7 +321,7 @@ export class OrderEngine {
         return { ...ord };
       } catch (err) {
         console.error("Supabase getOrderById exception:", err);
-        return null;
+        throw err;
       }
     }
 
@@ -1251,12 +1251,12 @@ export class OrderEngine {
 
         if (error) {
           console.error("Supabase getPendingPayments error:", error);
-          return [];
+          throw new Error("database_error");
         }
         return (data || []) as Payment[];
       } catch (err) {
         console.error("Supabase getPendingPayments exception:", err);
-        return [];
+        throw err;
       }
     }
 

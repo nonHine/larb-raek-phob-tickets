@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { engine } from "@/lib/engine";
 import { supabaseAdmin } from "@/lib/supabase";
+import { sendEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -191,31 +192,31 @@ export async function POST(
     const slipPath = `orders/${order.id}/${slipUuid}.${sniffed.ext}`;
 
     // 7. Upload to Supabase Storage and obtain signed URL
+    const { error: uploadErr } = await supabaseAdmin.storage
+      .from("Slips")
+      .upload(slipPath, buffer, {
+        contentType: sniffed.mime,
+        upsert: false,
+      });
+
+    if (uploadErr) {
+      console.error("Storage upload error:", uploadErr);
+      return NextResponse.json(
+        {
+          error: "slip_storage_unavailable",
+          message: "บันทึกภาพสลิปไม่สำเร็จ กรุณาลองใหม่อีกครั้ง ระบบยังไม่ได้ส่งสลิปให้ตรวจ",
+        },
+        { status: 503 }
+      );
+    }
+
+    // A short-lived URL is only a preview convenience. Admin can request a
+    // fresh signed URL from the private bucket if creation fails here.
     let slipUrl: string | null = null;
-    try {
-      const { error: uploadErr } = await supabaseAdmin.storage
-        .from("Slips")
-        .upload(slipPath, buffer, {
-          contentType: sniffed.mime,
-          upsert: true,
-        });
-
-      if (!uploadErr) {
-        const { data: signedData } = await supabaseAdmin.storage
-          .from("Slips")
-          .createSignedUrl(slipPath, 60 * 60 * 2); // SEC-004: 2 hours instead of 24h
-        if (signedData?.signedUrl) {
-          slipUrl = signedData.signedUrl;
-        }
-      }
-    } catch (storageErr) {
-      console.error("Storage upload error:", storageErr);
-    }
-
-    // Always provide base64 Data URL fallback for instant admin preview
-    if (!slipUrl && buffer.length < 5 * 1024 * 1024) {
-      slipUrl = `data:${sniffed.mime};base64,${buffer.toString("base64")}`;
-    }
+    const { data: signedData } = await supabaseAdmin.storage
+      .from("Slips")
+      .createSignedUrl(slipPath, 60 * 60);
+    if (signedData?.signedUrl) slipUrl = signedData.signedUrl;
 
     // 8. Add payment to engine
     try {
@@ -230,9 +231,25 @@ export async function POST(
         slip_url: slipUrl,
       });
 
+      const emailResult = await sendEmail({
+        to: order.email,
+        subject: "",
+        template: "slip_received",
+        data: {
+          buyer_name: order.buyer_name,
+          order_code: order.code,
+          access_token: order.access_token,
+        },
+      });
+
       return NextResponse.json({
         success: true,
         message: "เราได้รับสลิปแล้ว อยู่ระหว่างตรวจสอบ",
+        email_sent: emailResult.ok,
+        email_status: emailResult.status,
+        email_message: emailResult.ok
+          ? "ส่งอีเมลแจ้งรอตรวจสอบแล้ว"
+          : "รับสลิปแล้ว แต่ส่งอีเมลไม่สำเร็จ กรุณาติดตามสถานะในหน้าออเดอร์",
         payment: {
           id: payment.id,
           amount_thb: payment.amount_thb,

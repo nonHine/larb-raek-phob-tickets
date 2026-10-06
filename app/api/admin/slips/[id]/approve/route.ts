@@ -38,21 +38,27 @@ export async function POST(
     let ticketEmailStatus: string | null = null;
     let ticketEmailReason: string | null = null;
 
-    if (res.order.status === "paid" && res.ticketsIssued > 0) {
+    if (res.order.status === "paid") {
       try {
         const tickets = await engine.getTicketsForOrder(res.order.id);
-        const emailResult: any = await sendEmail({
-          to: res.order.email,
-          subject: "",
-          template: "paid",
-          data: {
-            buyer_name: res.order.buyer_name,
-            order_code: res.order.code,
-            access_token: res.order.access_token,
-            quantity: res.order.quantity,
-            tickets,
-          },
-        });
+        const emailResult = tickets.length === 0
+          ? {
+              ok: false,
+              status: "not_eligible",
+              error: "อนุมัติยอดแล้วแต่ยังไม่พบตั๋วในฐานข้อมูล โปรดตรวจสอบรายการออเดอร์",
+            }
+          : await sendEmail({
+              to: res.order.email,
+              subject: "",
+              template: "paid",
+              data: {
+                buyer_name: res.order.buyer_name,
+                order_code: res.order.code,
+                access_token: res.order.access_token,
+                quantity: res.order.quantity,
+                tickets,
+              },
+            });
 
         if (typeof emailResult === "boolean") {
           ticketEmailSent = emailResult;
@@ -64,6 +70,39 @@ export async function POST(
         }
       } catch (err) {
         console.error("[EMAIL ERROR] Ticket email preparation failed", {
+          order_code: res.order.code,
+          error_name: err instanceof Error ? err.name : "UnknownError",
+        });
+        ticketEmailSent = false;
+        ticketEmailStatus = "rendering_error";
+        ticketEmailReason = "เกิดข้อผิดพลาดในการเตรียมข้อมูลอีเมล";
+      }
+    } else {
+      // A reviewed partial payment still needs a clear email with the amount
+      // accepted and the remaining balance. Tickets are withheld until paid.
+      try {
+        const payments = await engine.getPaymentsForOrder(res.order.id);
+        const approvedAmount = payments
+          .filter((payment) => payment.status === "approved")
+          .reduce((sum, payment) => sum + Number(payment.amount_thb), 0);
+        const remainingAmount = Math.max(0, res.order.total_thb - approvedAmount);
+        const emailResult = await sendEmail({
+          to: res.order.email,
+          subject: "",
+          template: "partial_approval",
+          data: {
+            buyer_name: res.order.buyer_name,
+            order_code: res.order.code,
+            access_token: res.order.access_token,
+            amount: res.payment.amount_thb,
+            remaining_amount: remainingAmount,
+          },
+        });
+        ticketEmailSent = emailResult.ok;
+        ticketEmailStatus = emailResult.status;
+        ticketEmailReason = emailResult.error || null;
+      } catch (err) {
+        console.error("[EMAIL ERROR] Partial payment email preparation failed", {
           order_code: res.order.code,
           error_name: err instanceof Error ? err.name : "UnknownError",
         });
