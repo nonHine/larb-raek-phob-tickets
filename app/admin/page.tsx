@@ -155,6 +155,12 @@ export default function AdminSlipQueuePage() {
 
       const data = await res.json();
       if (!res.ok) {
+        if (res.status === 409 || data.error === "already_reviewed") {
+          setEmailNotice(data.message || "สลิปนี้ได้รับการตรวจไปแล้วโดยสตาฟท่านอื่น");
+          setSelectedItem(null);
+          await fetchQueue();
+          return;
+        }
         setActionError(data.message || data.error || "เกิดข้อผิดพลาดในการอนุมัติ");
         setSubmittingAction(false);
         return;
@@ -201,6 +207,12 @@ export default function AdminSlipQueuePage() {
 
       const data = await res.json();
       if (!res.ok) {
+        if (res.status === 409 || data.error === "already_reviewed") {
+          setEmailNotice(data.message || "สลิปนี้ได้รับการตรวจไปแล้วโดยสตาฟท่านอื่น");
+          setSelectedItem(null);
+          await fetchQueue();
+          return;
+        }
         setActionError(
           data.message || data.error || "เกิดข้อผิดพลาดในการปฏิเสธ"
         );

@@ -10,7 +10,24 @@ export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
     persistSession: false,
     autoRefreshToken: false,
   },
+  global: {
+    fetch: (input, init) => {
+      return fetch(input, {
+        ...init,
+        cache: "no-store",
+      });
+    },
+  },
 });
 
 // Client-safe public Supabase client
-export const supabasePublic = createClient(supabaseUrl, supabaseAnonKey);
+export const supabasePublic = createClient(supabaseUrl, supabaseAnonKey, {
+  global: {
+    fetch: (input, init) => {
+      return fetch(input, {
+        ...init,
+        cache: "no-store",
+      });
+    },
+  },
+});

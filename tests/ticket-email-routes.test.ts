@@ -4,6 +4,7 @@ const { engineMock, sendEmailMock } = vi.hoisted(() => ({
   engineMock: {
     approvePayment: vi.fn(),
     getTicketsForOrder: vi.fn(),
+    getPaymentsForOrder: vi.fn(),
     getOrdersByPhone: vi.fn(),
     getOrderByCode: vi.fn(),
   },
@@ -35,6 +36,9 @@ const issuedTickets = [
 beforeEach(() => {
   vi.clearAllMocks();
   engineMock.getTicketsForOrder.mockResolvedValue(issuedTickets);
+  engineMock.getPaymentsForOrder.mockResolvedValue([
+    { id: "payment-1", amount_thb: 49, status: "approved" },
+  ]);
   sendEmailMock.mockResolvedValue({ ok: true, status: "delivered_to_provider" });
 });
 
@@ -73,10 +77,10 @@ describe("ticket email route triggers", () => {
     );
   });
 
-  it("does not send a QR before the order is fully paid", async () => {
+  it("does not send a QR before the order is fully paid, but sends partial approval notice", async () => {
     engineMock.approvePayment.mockResolvedValue({
       success: true,
-      payment: { id: "payment-1" },
+      payment: { id: "payment-1", amount_thb: 49 },
       order: { ...order, status: "under_review" },
       ticketsIssued: 0,
     });
@@ -88,8 +92,17 @@ describe("ticket email route triggers", () => {
 
     expect(response.status).toBe(200);
     expect(body.order_status).toBe("under_review");
-    expect(body.ticket_email_sent).toBeNull();
-    expect(sendEmailMock).not.toHaveBeenCalled();
+    expect(body.ticket_email_sent).toBe(true);
+    expect(sendEmailMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: order.email,
+        template: "partial_approval",
+        data: expect.objectContaining({
+          amount: 49,
+          remaining_amount: 49,
+        }),
+      })
+    );
   });
 
   it("keeps approval successful and safely reports error if email provider rejects", async () => {
