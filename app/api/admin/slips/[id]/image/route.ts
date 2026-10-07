@@ -41,9 +41,19 @@ export async function GET(
     }
 
     if (engine.isSupabaseReady()) {
-      const { data: signedData, error: signErr } = await supabaseAdmin.storage
+      let { data: signedData, error: signErr } = await supabaseAdmin.storage
         .from("Slips")
         .createSignedUrl(slipPath, 3600);
+
+      if (signErr || !signedData?.signedUrl) {
+        const res2 = await supabaseAdmin.storage
+          .from("slips")
+          .createSignedUrl(slipPath, 3600);
+        if (res2.data?.signedUrl) {
+          signedData = res2.data;
+          signErr = null;
+        }
+      }
 
       if (!signErr && signedData?.signedUrl) {
         return NextResponse.redirect(signedData.signedUrl, 307);

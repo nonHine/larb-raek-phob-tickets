@@ -33,9 +33,17 @@ export async function GET(
         let slipUrl = p.slip_url || null;
         if (!slipUrl && p.slip_path && engine.isSupabaseReady()) {
           try {
-            const { data: signedData } = await supabaseAdmin.storage
+            let { data: signedData, error: signErr } = await supabaseAdmin.storage
               .from("Slips")
               .createSignedUrl(p.slip_path, 3600);
+            if (signErr || !signedData?.signedUrl) {
+              const res2 = await supabaseAdmin.storage
+                .from("slips")
+                .createSignedUrl(p.slip_path, 3600);
+              if (res2.data?.signedUrl) {
+                signedData = res2.data;
+              }
+            }
             if (signedData?.signedUrl) {
               slipUrl = signedData.signedUrl;
             }
