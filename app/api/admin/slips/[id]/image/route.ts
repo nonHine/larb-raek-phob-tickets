@@ -40,6 +40,16 @@ export async function GET(
       return NextResponse.json({ error: "Slip not found" }, { status: 404 });
     }
 
+    if (slipPath.startsWith("walkup/")) {
+      return NextResponse.json(
+        {
+          error: "walkup_sale_no_slip",
+          message: "รายการนี้เป็นการจำหน่ายบัตรหน้างานโดยตรง ไม่มีการแนบไฟล์ภาพสลิป",
+        },
+        { status: 404 }
+      );
+    }
+
     if (engine.isSupabaseReady()) {
       let { data: signedData, error: signErr } = await supabaseAdmin.storage
         .from("Slips")

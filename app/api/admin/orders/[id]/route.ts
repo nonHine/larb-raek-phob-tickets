@@ -30,8 +30,13 @@ export async function GET(
 
     const payments = await Promise.all(
       rawPayments.map(async (p) => {
+        const isWalkUp =
+          p.slip_path?.startsWith("walkup/") ||
+          p.to_bank?.includes("หน้าร้าน") ||
+          false;
+
         let slipUrl = p.slip_url || null;
-        if (!slipUrl && p.slip_path && engine.isSupabaseReady()) {
+        if (!isWalkUp && !slipUrl && p.slip_path && engine.isSupabaseReady()) {
           try {
             let { data: signedData, error: signErr } = await supabaseAdmin.storage
               .from("Slips")
@@ -53,7 +58,8 @@ export async function GET(
         }
         return {
           ...p,
-          slip_url: slipUrl || (p.slip_path ? `/api/admin/slips/${p.id}/image` : null),
+          is_walk_up: isWalkUp,
+          slip_url: isWalkUp ? null : (slipUrl || (p.slip_path ? `/api/admin/slips/${p.id}/image` : null)),
         };
       })
     );

@@ -18,6 +18,8 @@ import {
   Loader2,
   Image as ImageIcon,
   History,
+  ClipboardCheck,
+  Store,
 } from "lucide-react";
 
 interface TicketItem {
@@ -38,6 +40,8 @@ interface PaymentItem {
   slip_path: string | null;
   slip_url?: string | null;
   status: "pending" | "approved" | "rejected";
+  reviewed_by?: string | null;
+  is_walk_up?: boolean;
   ai_verified?: boolean;
   ai_confidence?: number;
   ai_reason?: string;
@@ -102,6 +106,7 @@ export function CustomerDetailModal({
 
   // Slip preview state
   const [previewSlipUrl, setPreviewSlipUrl] = useState<string | null>(null);
+  const [selectedPaymentForProof, setSelectedPaymentForProof] = useState<any | null>(null);
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
 
@@ -540,23 +545,51 @@ export function CustomerDetailModal({
                         </div>
                       )}
 
-                      {/* Slip preview trigger */}
-                      {(p.slip_url || p.slip_path) && (
-                        <div className="pt-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setImageLoading(true);
-                              setImageError(false);
-                              setPreviewSlipUrl(p.slip_url || `/api/admin/slips/${p.id}/image`);
-                            }}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface border border-border hover:border-brand/40 text-[11px] font-medium text-content transition-colors"
-                          >
-                            <ImageIcon className="w-3.5 h-3.5 text-brand" />
-                            <span>ดูรูปภาพสลิปจริง</span>
-                          </button>
-                        </div>
-                      )}
+                      {/* Slip preview or Walk-up proof trigger */}
+                      {(() => {
+                        const isWalkUp =
+                          p.is_walk_up ||
+                          p.slip_path?.startsWith("walkup/") ||
+                          p.to_bank?.includes("หน้าร้าน");
+
+                        if (isWalkUp) {
+                          return (
+                            <div className="pt-1">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedPaymentForProof(p)}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-amber-500/10 border border-amber-500/30 hover:border-amber-500 text-[11px] font-semibold text-amber-700 dark:text-amber-400 transition-colors"
+                              >
+                                <ClipboardCheck className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                                <span>📋 ดูหลักฐานการรับเงินหน้าร้าน</span>
+                              </button>
+                            </div>
+                          );
+                        }
+
+                        if (p.slip_url || p.slip_path) {
+                          return (
+                            <div className="pt-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setImageLoading(true);
+                                  setImageError(false);
+                                  setPreviewSlipUrl(
+                                    p.slip_url || `/api/admin/slips/${p.id}/image`
+                                  );
+                                }}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface border border-border hover:border-brand/40 text-[11px] font-medium text-content transition-colors"
+                              >
+                                <ImageIcon className="w-3.5 h-3.5 text-brand" />
+                                <span>ดูรูปภาพสลิปจริง</span>
+                              </button>
+                            </div>
+                          );
+                        }
+
+                        return null;
+                      })()}
                     </div>
                   ))}
                 </div>
@@ -658,6 +691,74 @@ export function CustomerDetailModal({
                 />
               )}
             </div>
+          </div>
+        </div>
+      )}
+      {/* On-site Payment Verification Modal */}
+      {selectedPaymentForProof && (
+        <div className="fixed inset-0 z-60 bg-black/80 flex items-center justify-center p-3 sm:p-5">
+          <div className="relative max-w-md w-full bg-surface rounded-2xl overflow-hidden p-5 flex flex-col gap-4 shadow-2xl border border-border animate-in fade-in zoom-in-95 duration-150">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-border">
+              <span className="text-xs font-bold text-content flex items-center gap-2">
+                <Store className="w-4 h-4 text-emerald-600" />
+                <span>หลักฐานการรับเงินหน้าร้าน (On-site POS)</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedPaymentForProof(null)}
+                className="p-1 rounded-lg text-content-muted hover:text-content hover:bg-surface-subtle transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Verified Banner */}
+            <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex items-start gap-3">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+              <div className="flex flex-col gap-0.5 text-xs text-emerald-800 dark:text-emerald-300">
+                <span className="font-bold text-sm">ยืนยันการรับเงินหน้าร้านโดยสตาฟ</span>
+                <span className="text-[11px] opacity-90 leading-relaxed">
+                  รายการนี้เป็นการจำหน่ายบัตรและรับชำระเงินโดยตรง ณ จุดลงทะเบียนประตูทางเข้า โดยสตาฟได้ตรวจสอบยอดเงินและเช็คอินเรียบร้อยแล้ว
+                </span>
+              </div>
+            </div>
+
+            {/* Summary Details */}
+            <div className="p-3.5 rounded-xl bg-surface-subtle border border-border flex flex-col gap-2.5 text-xs">
+              <div className="flex justify-between items-center pb-2 border-b border-border/60">
+                <span className="text-content-muted">รหัสออเดอร์:</span>
+                <span className="font-mono font-extrabold text-content text-sm">{order?.code}</span>
+              </div>
+              <div className="flex justify-between items-center pb-2 border-b border-border/60">
+                <span className="text-content-muted">ยอดเงินที่ชำระ:</span>
+                <span className="font-black text-brand text-base">{selectedPaymentForProof.amount_thb} บาท</span>
+              </div>
+              <div className="flex justify-between items-center pb-2 border-b border-border/60">
+                <span className="text-content-muted">ช่องทางรับเงิน:</span>
+                <span className="font-semibold text-content">{selectedPaymentForProof.to_bank}</span>
+              </div>
+              <div className="flex justify-between items-center pb-2 border-b border-border/60">
+                <span className="text-content-muted">ชื่อผู้ซื้อ / ลูกค้า:</span>
+                <span className="font-semibold text-content">{selectedPaymentForProof.payer_name_or_last4 || order?.buyer_name || "-"}</span>
+              </div>
+              <div className="flex justify-between items-center pb-2 border-b border-border/60">
+                <span className="text-content-muted">สตาฟผู้รับเงิน:</span>
+                <span className="font-mono text-content font-medium">{selectedPaymentForProof.reviewed_by || "staff-door"}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-content-muted">เวลาทำรายการ:</span>
+                <span className="text-content">{new Date(selectedPaymentForProof.created_at).toLocaleString("th-TH")}</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setSelectedPaymentForProof(null)}
+              className="w-full py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-colors"
+            >
+              ปิดหน้าต่าง
+            </button>
           </div>
         </div>
       )}
