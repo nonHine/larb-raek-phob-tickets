@@ -27,6 +27,8 @@ interface DashboardStats {
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [autoApproveEnabled, setAutoApproveEnabled] = useState(true);
+  const [togglingAi, setTogglingAi] = useState(false);
 
   const fetchStats = async () => {
     try {
@@ -42,8 +44,40 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const fetchAiSettings = async () => {
+    try {
+      const res = await fetch("/api/admin/ai-settings", { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        if (typeof data.settings?.autoApprove === "boolean") {
+          setAutoApproveEnabled(data.settings.autoApprove);
+        }
+      }
+    } catch {}
+  };
+
+  const handleToggleAi = async () => {
+    if (togglingAi) return;
+    setTogglingAi(true);
+    try {
+      const nextVal = !autoApproveEnabled;
+      const res = await fetch("/api/admin/ai-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ autoApprove: nextVal }),
+      });
+      if (res.ok) {
+        setAutoApproveEnabled(nextVal);
+      }
+    } catch {
+    } finally {
+      setTogglingAi(false);
+    }
+  };
+
   useEffect(() => {
     fetchStats();
+    fetchAiSettings();
     const interval = setInterval(fetchStats, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -67,7 +101,36 @@ export default function AdminDashboardPage() {
             <span className="text-xs">กำลังโหลดสถิติ...</span>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
+          <>
+            {/* AI Auto-Approve Control Banner */}
+            <div className="flex items-center justify-between p-4 rounded-2xl border border-purple-500/20 bg-purple-500/5">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold text-base">
+                  🤖
+                </div>
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-content">ระบบ AI ตรวจสลิปอัตโนมัติ (Gemini Vision)</span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${autoApproveEnabled ? "bg-status-success-subtle text-status-success" : "bg-status-warning-subtle text-status-warning"}`}>
+                      {autoApproveEnabled ? "Auto ON (อนุมัติทันที)" : "Auto OFF (รอแอดมินยืนยัน)"}
+                    </span>
+                  </div>
+                  <span className="text-xs text-content-muted">
+                    {autoApproveEnabled ? "ระบบจะตรวจสอบยอดเงินและบัญชีปลายทาง หากถูกต้อง 100% จะอนุมัติออกบัตรทันที" : "AI ช่วยวิเคราะห์ข้อมูลให้ แต่แอดมินต้องเป็นผู้กด 1-Click Approve"}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={togglingAi}
+                onClick={handleToggleAi}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${autoApproveEnabled ? "bg-status-success text-white hover:opacity-90" : "bg-surface border border-border text-content hover:bg-surface-subtle"}`}
+              >
+                {togglingAi ? "..." : autoApproveEnabled ? "เปิดใช้งานอยู่" : "ปิดการอนุมัติออโต้"}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
             {/* Confirmed Revenue */}
             <div className="col-span-2 p-5 rounded-2xl bg-gradient-to-r from-brand to-brand-pressed text-white shadow-sm flex flex-col gap-1">
               <span className="text-xs opacity-90 font-medium">
@@ -147,7 +210,8 @@ export default function AdminDashboardPage() {
               </span>
             </div>
           </div>
-        )}
+        </>
+      )}
       </div>
     </div>
   );

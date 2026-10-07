@@ -196,6 +196,7 @@ export async function GET() {
             created_at: order.created_at,
           },
           duplicates: duplicateMatches,
+          ai_analysis: engine.getAiAnalysis(p.id),
         });
       }
 
@@ -257,6 +258,7 @@ export async function GET() {
           created_at: order.created_at,
         },
         duplicates: duplicateMatches,
+        ai_analysis: engine.getAiAnalysis(p.id),
       });
     }
 

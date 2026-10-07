@@ -45,6 +45,8 @@ export class OrderEngine {
   public payments: Map<string, Payment> = new Map();
   public tickets: Map<string, Ticket> = new Map();
   public auditLogs: AuditLog[] = [];
+  public aiAutoApproveEnabled: boolean = true;
+  public aiAnalyses: Map<string, any> = new Map();
   public venueStatus: VenueStatus = {
     id: 1,
     is_full: false,
@@ -84,12 +86,32 @@ export class OrderEngine {
     this.payments.clear();
     this.tickets.clear();
     this.auditLogs = [];
+    this.aiAnalyses.clear();
+    this.aiAutoApproveEnabled = true;
     this.venueStatus = {
       id: 1,
       is_full: false,
       updated_by: null,
       updated_at: new Date().toISOString(),
     };
+  }
+
+  // --- AI Verification Settings & Cache ---
+  public getAiSettings(): { autoApprove: boolean } {
+    return { autoApprove: this.aiAutoApproveEnabled };
+  }
+
+  public setAiSettings(settings: { autoApprove: boolean }): { autoApprove: boolean } {
+    this.aiAutoApproveEnabled = Boolean(settings.autoApprove);
+    return { autoApprove: this.aiAutoApproveEnabled };
+  }
+
+  public recordAiAnalysis(paymentId: string, analysis: any): void {
+    this.aiAnalyses.set(paymentId, analysis);
+  }
+
+  public getAiAnalysis(paymentId: string): any | null {
+    return this.aiAnalyses.get(paymentId) || null;
   }
 
   // --- Venue Status ---

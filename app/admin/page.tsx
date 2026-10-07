@@ -51,6 +51,22 @@ interface QueueItem {
     status: string;
     reason: string;
   }>;
+  ai_analysis?: {
+    analysis?: {
+      isValidSlip?: boolean;
+      bankName?: string | null;
+      senderName?: string | null;
+      receiverAccountOrName?: string | null;
+      transferredAt?: string | null;
+      amountThb?: number | null;
+      confidenceScore?: number;
+      reason?: string;
+    };
+    isMatchingAmount?: boolean;
+    isMatchingReceiver?: boolean;
+    isAutoApprovable?: boolean;
+    summaryText?: string;
+  } | null;
 }
 
 export default function AdminSlipQueuePage() {
@@ -69,6 +85,42 @@ export default function AdminSlipQueuePage() {
   const [submittingAction, setSubmittingAction] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [emailNotice, setEmailNotice] = useState<string | null>(null);
+  const [autoApproveEnabled, setAutoApproveEnabled] = useState(true);
+  const [togglingAi, setTogglingAi] = useState(false);
+
+  const fetchAiSettings = async () => {
+    try {
+      const res = await fetch("/api/admin/ai-settings", { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        if (typeof data.settings?.autoApprove === "boolean") {
+          setAutoApproveEnabled(data.settings.autoApprove);
+        }
+      }
+    } catch {
+      // keep
+    }
+  };
+
+  const handleToggleAi = async () => {
+    if (togglingAi) return;
+    setTogglingAi(true);
+    try {
+      const nextVal = !autoApproveEnabled;
+      const res = await fetch("/api/admin/ai-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ autoApprove: nextVal }),
+      });
+      if (res.ok) {
+        setAutoApproveEnabled(nextVal);
+      }
+    } catch {
+      // keep
+    } finally {
+      setTogglingAi(false);
+    }
+  };
 
   // Sound generator using Web Audio API (no external file needed)
   const playBeep = () => {
@@ -121,6 +173,7 @@ export default function AdminSlipQueuePage() {
   useEffect(() => {
     let isMounted = true;
     fetchQueue();
+    fetchAiSettings();
     const interval = setInterval(() => {
       if (isMounted) {
         fetchQueue();
@@ -298,6 +351,34 @@ export default function AdminSlipQueuePage() {
           </button>
         </div>
 
+        {/* AI Auto-Approve Toggle Banner */}
+        <div className="flex items-center justify-between p-3.5 rounded-2xl border border-purple-500/20 bg-purple-500/5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold text-sm">
+              🤖
+            </div>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-content">ระบบ AI อนุมัติสลิปอัตโนมัติ (Auto-Approve)</span>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${autoApproveEnabled ? "bg-status-success-subtle text-status-success" : "bg-status-warning-subtle text-status-warning"}`}>
+                  {autoApproveEnabled ? "เปิดใช้งาน (Auto ON)" : "โหมดตรวจมือ (Auto OFF)"}
+                </span>
+              </div>
+              <span className="text-[11px] text-content-muted">
+                {autoApproveEnabled ? "เมื่อ AI ตรวจพบยอดเงินและบัญชีถูกต้อง 100% จะอนุมัติและออกตั๋วส่งอีเมลให้ลูกค้าทันที" : "AI จะช่วยวิเคราะห์สลิปและสรุปผลให้ แต่รอแอดมินกดอนุมัติ (1-Click)"}
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            disabled={togglingAi}
+            onClick={handleToggleAi}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${autoApproveEnabled ? "bg-status-success text-white hover:opacity-90" : "bg-surface border border-border text-content hover:bg-surface-subtle"}`}
+          >
+            {togglingAi ? "กำลังบันทึก..." : autoApproveEnabled ? "เปิดอยู่" : "ปิดอยู่"}
+          </button>
+        </div>
+
         <p className="text-xs text-content-muted">
           รายการสลิปที่รอตรวจสอบ เรียงลำดับจากเก่าสุดก่อน (อัปเดตอัตโนมัติทุก 5 วินาที)
         </p>
@@ -345,6 +426,15 @@ export default function AdminSlipQueuePage() {
                     {item.order.code}
                   </span>
                   <div className="flex items-center gap-1.5">
+                    {item.ai_analysis && (
+                      <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] flex items-center gap-1 ${
+                        item.ai_analysis.isAutoApprovable
+                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                          : "bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20"
+                      }`}>
+                        <span>🤖 {item.ai_analysis.isAutoApprovable ? "AI ตรวจผ่าน 100%" : "AI สรุปข้อมูล"}</span>
+                      </span>
+                    )}
                     {item.duplicates.length > 0 && (
                       <span className="px-2 py-0.5 rounded-full bg-status-danger-subtle text-status-danger font-bold text-[10px] flex items-center gap-1">
                         <AlertTriangle className="w-3 h-3" />
@@ -467,6 +557,43 @@ export default function AdminSlipQueuePage() {
                   </div>
                 )}
               </div>
+
+              {/* AI Verification Analysis Card */}
+              {selectedItem.ai_analysis && (
+                <div className="p-3.5 rounded-xl bg-purple-500/10 border border-purple-500/30 text-xs flex flex-col gap-2">
+                  <div className="flex items-center justify-between font-bold text-purple-700 dark:text-purple-300">
+                    <span className="flex items-center gap-1.5">
+                      <span>🤖 ผลวิเคราะห์โดย AI (Gemini Vision)</span>
+                    </span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                      selectedItem.ai_analysis.isAutoApprovable
+                        ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+                        : "bg-purple-500/20 text-purple-700 dark:text-purple-300"
+                    }`}>
+                      {selectedItem.ai_analysis.isAutoApprovable ? "แนะนำให้อนุมัติ (ตรง 100%)" : "แนะนำตรวจมือ"}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-[11px]">
+                    <div className="p-2 rounded-lg bg-surface/60 border border-border flex flex-col">
+                      <span className="text-content-muted">ยอดที่ AI อ่านได้:</span>
+                      <span className="font-bold text-content mt-0.5">
+                        {selectedItem.ai_analysis.analysis?.amountThb !== null && selectedItem.ai_analysis.analysis?.amountThb !== undefined
+                          ? `${selectedItem.ai_analysis.analysis.amountThb} บาท`
+                          : "ไม่พบตัวเลข"}
+                      </span>
+                    </div>
+                    <div className="p-2 rounded-lg bg-surface/60 border border-border flex flex-col">
+                      <span className="text-content-muted">ปลายทางที่ตรวจพบ:</span>
+                      <span className="font-bold text-content mt-0.5 truncate">
+                        {selectedItem.ai_analysis.analysis?.receiverAccountOrName || "-"}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-[11px] text-content-muted">
+                    {selectedItem.ai_analysis.summaryText}
+                  </span>
+                </div>
+              )}
 
               {/* Amount Comparison */}
               <div className="grid grid-cols-2 gap-3 text-xs">

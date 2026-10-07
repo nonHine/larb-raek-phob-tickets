@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { engine } from "@/lib/engine";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendEmail } from "@/lib/email";
+import { verifySlipWithAI } from "@/lib/ai-slip-verifier";
 
 export const dynamic = "force-dynamic";
 
@@ -231,6 +232,70 @@ export async function POST(
         slip_url: slipUrl,
       });
 
+      // 9. AI Slip Verification & Auto-Approve Check
+      let verification: any = null;
+      try {
+        verification = await verifySlipWithAI({
+          buffer,
+          mimeType: sniffed.mime,
+          expectedAmount: order.total_thb,
+          targetPromptPay: process.env.PROMPTPAY_ID || "0812345678",
+        });
+        engine.recordAiAnalysis(payment.id, verification);
+      } catch (aiErr) {
+        console.error("AI Slip verification failed:", aiErr);
+      }
+
+      const aiSettings = engine.getAiSettings();
+      let autoApproved = false;
+
+      // Auto-approve if enabled and AI analysis is positive & confident
+      if (aiSettings.autoApprove && verification?.isAutoApprovable) {
+        try {
+          const approvalRes = await engine.approvePayment({
+            payment_id: payment.id,
+            reviewer_id: "system_ai",
+          });
+
+          if (approvalRes.success) {
+            autoApproved = true;
+
+            // Fetch tickets to send ticket email
+            const tickets = await engine.getTicketsForOrder(order.id);
+            const emailResult = await sendEmail({
+              to: order.email,
+              subject: "",
+              template: "paid",
+              data: {
+                buyer_name: order.buyer_name,
+                order_code: order.code,
+                access_token: order.access_token,
+                quantity: order.quantity,
+                tickets,
+              },
+            });
+
+            return NextResponse.json({
+              success: true,
+              auto_approved: true,
+              message: "สลิปถูกต้อง! ระบบ AI อนุมัติและออกบัตรคอนเสิร์ตให้คุณเรียบร้อยแล้ว",
+              verification,
+              email_sent: emailResult.ok,
+              email_status: emailResult.status,
+              payment: {
+                id: payment.id,
+                amount_thb: payment.amount_thb,
+                status: "approved",
+                created_at: payment.created_at,
+              },
+            });
+          }
+        } catch (autoErr) {
+          console.error("Auto approval execution error:", autoErr);
+        }
+      }
+
+      // Fallback: Send standard slip_received email for manual admin review
       const emailResult = await sendEmail({
         to: order.email,
         subject: "",
@@ -244,7 +309,9 @@ export async function POST(
 
       return NextResponse.json({
         success: true,
+        auto_approved: false,
         message: "เราได้รับสลิปแล้ว อยู่ระหว่างตรวจสอบ",
+        verification,
         email_sent: emailResult.ok,
         email_status: emailResult.status,
         email_message: emailResult.ok
