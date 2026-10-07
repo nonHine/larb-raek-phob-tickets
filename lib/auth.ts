@@ -1,4 +1,4 @@
-const ADMIN_PIN = process.env.ADMIN_PIN || "8899";
+const ADMIN_PIN = process.env.ADMIN_PIN || "3011";
 const STAFF_PIN = process.env.STAFF_PIN || "1122";
 const AUTH_SECRET =
   process.env.AUTH_SECRET ||

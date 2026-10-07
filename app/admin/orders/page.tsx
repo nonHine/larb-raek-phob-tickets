@@ -14,7 +14,9 @@ import {
   Loader2,
   Ban,
   FileText,
+  Edit3,
 } from "lucide-react";
+import { CustomerDetailModal } from "@/components/admin/CustomerDetailModal";
 
 interface AdminOrder {
   id: string;
@@ -44,6 +46,7 @@ export default function AdminOrdersPage() {
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
   const fetchOrders = async () => {
     try {
@@ -210,11 +213,14 @@ export default function AdminOrdersPage() {
             {orders.map((o) => (
               <div
                 key={o.id}
-                className="p-4 rounded-2xl border border-border bg-surface flex flex-col gap-2.5 text-xs shadow-sm"
+                className="p-4 rounded-2xl border border-border bg-surface flex flex-col gap-2.5 text-xs shadow-sm hover:border-brand/30 transition-colors"
               >
-                <div className="flex items-center justify-between">
+                <div
+                  className="flex items-center justify-between cursor-pointer"
+                  onClick={() => setSelectedOrderId(o.id)}
+                >
                   <div className="flex items-center gap-2">
-                    <span className="font-mono font-bold text-sm text-content">
+                    <span className="font-mono font-bold text-sm text-content hover:text-brand transition-colors">
                       {o.code}
                     </span>
                     <span className="text-[10px] text-content-muted">
@@ -243,7 +249,10 @@ export default function AdminOrdersPage() {
                   </span>
                 </div>
 
-                <div className="flex justify-between items-center text-content">
+                <div
+                  className="flex justify-between items-center text-content cursor-pointer"
+                  onClick={() => setSelectedOrderId(o.id)}
+                >
                   <span className="font-medium">
                     {o.buyer_name} • {o.phone}
                   </span>
@@ -262,9 +271,18 @@ export default function AdminOrdersPage() {
                   <span>{new Date(o.created_at).toLocaleDateString("th-TH")}</span>
                 </div>
 
-                {/* Cancel action if not cancelled */}
-                {o.status !== "cancelled" && (
-                  <div className="flex items-center justify-end gap-2 pt-1">
+                {/* Actions row */}
+                <div className="flex items-center justify-end gap-2 pt-1 border-t border-border/40">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedOrderId(o.id)}
+                    className="px-2.5 py-1 rounded-lg border border-border hover:border-brand/40 bg-surface-subtle text-content text-[11px] font-semibold flex items-center gap-1 transition-colors"
+                  >
+                    <Edit3 className="w-3 h-3 text-brand" />
+                    <span>ดู/แก้ไขข้อมูล</span>
+                  </button>
+
+                  {o.status !== "cancelled" && (
                     <button
                       type="button"
                       onClick={() => setCancellingOrderId(o.id)}
@@ -272,8 +290,8 @@ export default function AdminOrdersPage() {
                     >
                       ยกเลิกออเดอร์
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -322,6 +340,13 @@ export default function AdminOrdersPage() {
           </div>
         </div>
       )}
+
+      {/* Customer Detail & Edit Modal */}
+      <CustomerDetailModal
+        orderId={selectedOrderId}
+        onClose={() => setSelectedOrderId(null)}
+        onUpdated={fetchOrders}
+      />
     </div>
   );
 }

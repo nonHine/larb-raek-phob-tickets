@@ -89,7 +89,7 @@ export class OrderEngine {
     };
   }
 
-  private isSupabaseReady(): boolean {
+  public isSupabaseReady(): boolean {
     return !!(
       process.env.NEXT_PUBLIC_SUPABASE_URL &&
       process.env.SUPABASE_SERVICE_ROLE_KEY &&
@@ -1686,6 +1686,68 @@ export class OrderEngine {
     return { ...order };
   }
 
+  public async updateCustomerDetails(
+    orderId: string,
+    updates: {
+      buyer_name?: string;
+      phone?: string;
+      email?: string;
+      admin_note?: string;
+    },
+    staffId: string = "staff-admin"
+  ): Promise<Order | null> {
+    let order = await this.getOrderById(orderId);
+    if (!order) {
+      order = await this.getOrderByCode(orderId);
+    }
+    if (!order) return null;
+
+    if (updates.buyer_name !== undefined) {
+      order.buyer_name = updates.buyer_name.trim();
+    }
+    if (updates.phone !== undefined) {
+      const p = updates.phone.trim();
+      order.phone = p || "-";
+    }
+    if (updates.email !== undefined) {
+      order.email = updates.email.trim();
+    }
+    if (updates.admin_note !== undefined) {
+      order.admin_note = updates.admin_note.trim() || null;
+    }
+
+    this.orders.set(order.id, { ...order });
+
+    if (this.isSupabaseReady()) {
+      try {
+        const updatePayload: Record<string, any> = {};
+        if (updates.buyer_name !== undefined) updatePayload.buyer_name = order.buyer_name;
+        if (updates.phone !== undefined) {
+          updatePayload.phone = /^0[0-9]{9}$/.test(order.phone) ? order.phone : "0000000000";
+        }
+        if (updates.email !== undefined) updatePayload.email = order.email;
+        if (updates.admin_note !== undefined) updatePayload.admin_note = order.admin_note;
+
+        await supabaseAdmin
+          .from("orders")
+          .update(updatePayload)
+          .eq("id", order.id);
+
+        await supabaseAdmin.from("audit_log").insert({
+          action: "customer_details_updated",
+          actor: toUuid(staffId),
+          entity: "order",
+          entity_id: toUuid(order.id),
+          meta: updates,
+        });
+      } catch (err) {
+        console.error("Supabase updateCustomerDetails error:", err);
+      }
+    }
+
+    return { ...order };
+  }
+
   public async getDashboardStats(): Promise<{
     total_orders: number;
     pending_payment_count: number;
@@ -1698,6 +1760,18 @@ export class OrderEngine {
     onsite_cash_thb: number;
     onsite_promptpay_thb: number;
     onsite_tickets_count: number;
+    check_in_rate_percent: number;
+    online_revenue_thb: number;
+    online_tickets_count: number;
+    recent_activities: Array<{
+      id: string;
+      code: string;
+      buyer_name: string;
+      total_thb: number;
+      quantity: number;
+      status: string;
+      created_at: string;
+    }>;
   }> {
     if (this.isSupabaseReady()) {
       try {
@@ -1707,9 +1781,32 @@ export class OrderEngine {
           supabaseAdmin.from("tickets").select("id, status"),
         ]);
 
-        const orders = ordersRes.data || [];
-        const payments = paymentsRes.data || [];
-        const tickets = ticketsRes.data || [];
+        const orders = ordersRes?.data || [];
+        const payments = paymentsRes?.data || [];
+        const tickets = ticketsRes?.data || [];
+
+        let recentActivities: any[] = [];
+        try {
+          const recentQuery = supabaseAdmin
+            .from("orders")
+            .select("id, code, buyer_name, total_thb, quantity, status, created_at");
+          if (typeof (recentQuery as any)?.order === "function") {
+            const recentRes = await (recentQuery as any)
+              .order("created_at", { ascending: false })
+              .limit(10);
+            recentActivities = (recentRes?.data || []).map((o: any) => ({
+              id: o.id,
+              code: o.code,
+              buyer_name: o.buyer_name,
+              total_thb: Number(o.total_thb || 0),
+              quantity: Number(o.quantity || 1),
+              status: o.status,
+              created_at: o.created_at,
+            }));
+          }
+        } catch {
+          // ignore
+        }
 
         const onsiteCashThb = payments
           .filter((p: any) => p.to_bank === "เงินสดหน้าร้าน")
@@ -1723,18 +1820,31 @@ export class OrderEngine {
           (onsiteCashThb + onsitePromptpayThb) / (EVENT.ticketPriceThb || 1)
         );
 
+        const confirmedRevenue = payments.reduce((sum: number, p: any) => sum + Number(p.amount_thb || 0), 0);
+        const ticketsIssuedCount = tickets.filter((t: any) => t.status === "issued" || t.status === "checked_in").length;
+        const ticketsCheckedInCount = tickets.filter((t: any) => t.status === "checked_in").length;
+        const checkInRatePercent = ticketsIssuedCount > 0
+          ? Math.round((ticketsCheckedInCount / ticketsIssuedCount) * 1000) / 10
+          : 0;
+        const onlineRevenueThb = Math.max(0, confirmedRevenue - (onsiteCashThb + onsitePromptpayThb));
+        const onlineTicketsCount = Math.max(0, ticketsIssuedCount - onsiteTicketsCount);
+
         return {
           total_orders: orders.length,
           pending_payment_count: orders.filter((o: any) => o.status === "pending_payment").length,
           under_review_count: orders.filter((o: any) => o.status === "under_review").length,
           paid_count: orders.filter((o: any) => o.status === "paid").length,
           cancelled_count: orders.filter((o: any) => o.status === "cancelled").length,
-          confirmed_revenue_thb: payments.reduce((sum: number, p: any) => sum + Number(p.amount_thb || 0), 0),
-          tickets_issued: tickets.filter((t: any) => t.status === "issued" || t.status === "checked_in").length,
-          tickets_checked_in: tickets.filter((t: any) => t.status === "checked_in").length,
+          confirmed_revenue_thb: confirmedRevenue,
+          tickets_issued: ticketsIssuedCount,
+          tickets_checked_in: ticketsCheckedInCount,
           onsite_cash_thb: onsiteCashThb,
           onsite_promptpay_thb: onsitePromptpayThb,
           onsite_tickets_count: onsiteTicketsCount,
+          check_in_rate_percent: checkInRatePercent,
+          online_revenue_thb: onlineRevenueThb,
+          online_tickets_count: onlineTicketsCount,
+          recent_activities: recentActivities,
         };
       } catch (err) {
         console.error("Supabase getDashboardStats exception:", err);
@@ -1783,6 +1893,24 @@ export class OrderEngine {
       (onsiteCashThb + onsitePromptpayThb) / (EVENT.ticketPriceThb || 1)
     );
 
+    const checkInRatePercent = ticketsIssued > 0
+      ? Math.round((ticketsCheckedIn / ticketsIssued) * 1000) / 10
+      : 0;
+    const onlineRevenueThb = Math.max(0, confirmedRevenue - (onsiteCashThb + onsitePromptpayThb));
+    const onlineTicketsCount = Math.max(0, ticketsIssued - onsiteTicketsCount);
+    const recentActivities = Array.from(this.orders.values())
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 10)
+      .map((o) => ({
+        id: o.id,
+        code: o.code,
+        buyer_name: o.buyer_name,
+        total_thb: Number(o.total_thb || 0),
+        quantity: Number(o.quantity || 1),
+        status: o.status,
+        created_at: o.created_at,
+      }));
+
     return {
       total_orders: this.orders.size,
       pending_payment_count: pendingPaymentCount,
@@ -1795,6 +1923,10 @@ export class OrderEngine {
       onsite_cash_thb: onsiteCashThb,
       onsite_promptpay_thb: onsitePromptpayThb,
       onsite_tickets_count: onsiteTicketsCount,
+      check_in_rate_percent: checkInRatePercent,
+      online_revenue_thb: onlineRevenueThb,
+      online_tickets_count: onlineTicketsCount,
+      recent_activities: recentActivities,
     };
   }
 }
