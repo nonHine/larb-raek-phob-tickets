@@ -11,8 +11,8 @@ const notoSansThai = Noto_Sans_Thai({
 });
 
 export const metadata: Metadata = {
-  title: `${EVENT.name} | ซื้อบัตรเข้างาน`,
-  description: `ซื้อบัตรเข้างาน ${EVENT.name} ${EVENT.venue} ราคา ${EVENT.ticketPriceThb} บาท`,
+  title: `ระบบปิดให้บริการแล้ว | ${EVENT.name}`,
+  description: `ระบบปิดให้บริการแล้ว - ${EVENT.name} สิ้นสุดลงเรียบร้อยแล้ว`,
 };
 
 export const viewport: Viewport = {

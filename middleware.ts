@@ -1,117 +1,58 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { parseSessionToken } from "@/lib/auth";
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // 1. Whitelist public auth routes and static assets
+  // 1. Whitelist static assets, next internal files, and images
   if (
-    pathname === "/admin/login" ||
-    pathname.startsWith("/api/auth/") ||
     pathname.startsWith("/_next/") ||
-    pathname.includes(".")
+    pathname.startsWith("/api/placeholder/") ||
+    pathname === "/Logo.jpg" ||
+    pathname === "/logo.svg" ||
+    pathname === "/favicon.ico" ||
+    pathname.endsWith(".jpg") ||
+    pathname.endsWith(".jpeg") ||
+    pathname.endsWith(".png") ||
+    pathname.endsWith(".svg") ||
+    pathname.endsWith(".ico")
   ) {
     return NextResponse.next();
   }
 
-  // 2. Protect Admin Web Pages (/admin and /admin/*)
-  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
-    const sessionCookie = req.cookies.get("staff_session")?.value;
-    const { valid, role } = await parseSessionToken(sessionCookie);
-
-    if (!valid || !role) {
-      const loginUrl = new URL("/admin/login", req.url);
-      loginUrl.searchParams.set("next", pathname);
-      return NextResponse.redirect(loginUrl);
-    }
-
-    // Role check: scanner role trying to access admin dashboard -> redirect to scan page
-    if (role !== "admin") {
-      return NextResponse.redirect(new URL("/staff/scan", req.url));
-    }
-
-    return NextResponse.next();
-  }
-
-  // 3. Protect Staff Web Pages (/staff and /staff/*)
-  if (pathname === "/staff" || pathname.startsWith("/staff/")) {
-    const sessionCookie = req.cookies.get("staff_session")?.value;
-    const { valid, role } = await parseSessionToken(sessionCookie);
-
-    if (!valid || !role) {
-      const loginUrl = new URL("/admin/login", req.url);
-      loginUrl.searchParams.set("next", pathname);
-      return NextResponse.redirect(loginUrl);
-    }
-
-    // Both 'admin' and 'scanner' roles can access staff scanner
-    return NextResponse.next();
-  }
-
-  // 4. Protect Admin API Routes (/api/admin/*)
-  if (pathname.startsWith("/api/admin/")) {
-    const sessionCookie = req.cookies.get("staff_session")?.value;
-    const { valid, role } = await parseSessionToken(sessionCookie);
-
-    if (!valid || role !== "admin") {
-      return NextResponse.json(
-        {
-          error: "unauthorized",
-          message: "ต้องใช้สิทธิ์ Admin PIN ในการดำเนินการนี้",
+  // 2. All API routes return 410 Gone with Thai closed notice
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.json(
+      {
+        error: "event_closed",
+        message: "ระบบปิดให้บริการแล้ว - งานลาบแรกพบ ครั้งที่ 2 สิ้นสุดลงเรียบร้อยแล้ว",
+      },
+      {
+        status: 410,
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate",
         },
-        { status: 401 }
-      );
-    }
+      }
+    );
+  }
 
+  // 3. Root landing page displays the closed page
+  if (pathname === "/") {
     return NextResponse.next();
   }
 
-  // 5. Protect Staff API Routes (/api/staff/*)
-  if (pathname.startsWith("/api/staff/")) {
-    const sessionCookie = req.cookies.get("staff_session")?.value;
-    const { valid, role } = await parseSessionToken(sessionCookie);
-
-    if (!valid || !role) {
-      return NextResponse.json(
-        {
-          error: "unauthorized",
-          message: "ต้องใช้สิทธิ์ Staff หรือ Admin PIN ในการดำเนินการนี้",
-        },
-        { status: 401 }
-      );
-    }
-
-    return NextResponse.next();
-  }
-
-  // 6. Protect Admin POST /api/venue-status
-  if (pathname === "/api/venue-status" && req.method === "POST") {
-    const sessionCookie = req.cookies.get("staff_session")?.value;
-    const { valid, role } = await parseSessionToken(sessionCookie);
-
-    if (!valid || role !== "admin") {
-      return NextResponse.json(
-        {
-          error: "unauthorized",
-          message: "ต้องใช้สิทธิ์ Admin PIN ในการดำเนินการนี้",
-        },
-        { status: 401 }
-      );
-    }
-
-    return NextResponse.next();
-  }
-
-  return NextResponse.next();
+  // 4. Any other page redirects directly to root (closed page)
+  return NextResponse.redirect(new URL("/", req.url));
 }
 
 export const config = {
   matcher: [
-    "/admin/:path*",
-    "/staff/:path*",
-    "/api/admin/:path*",
-    "/api/staff/:path*",
-    "/api/venue-status",
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    "/((?!_next/static|_next/image|favicon.ico).*)",
   ],
 };
