@@ -23,10 +23,32 @@ export async function GET(
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
-    const [payments, tickets] = await Promise.all([
+    const [rawPayments, tickets] = await Promise.all([
       engine.getPaymentsForOrder(order.id),
       engine.getTicketsForOrder(order.id),
     ]);
+
+    const payments = await Promise.all(
+      rawPayments.map(async (p) => {
+        let slipUrl = p.slip_url || null;
+        if (!slipUrl && p.slip_path && engine.isSupabaseReady()) {
+          try {
+            const { data: signedData } = await supabaseAdmin.storage
+              .from("Slips")
+              .createSignedUrl(p.slip_path, 3600);
+            if (signedData?.signedUrl) {
+              slipUrl = signedData.signedUrl;
+            }
+          } catch {
+            // fallback
+          }
+        }
+        return {
+          ...p,
+          slip_url: slipUrl || (p.slip_path ? `/api/admin/slips/${p.id}/image` : null),
+        };
+      })
+    );
 
     let auditLogs: any[] = [];
     if (engine.isSupabaseReady()) {

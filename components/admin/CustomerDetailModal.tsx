@@ -36,6 +36,7 @@ interface PaymentItem {
   payer_name_or_last4: string | null;
   transferred_at: string | null;
   slip_path: string | null;
+  slip_url?: string | null;
   status: "pending" | "approved" | "rejected";
   ai_verified?: boolean;
   ai_confidence?: number;
@@ -101,6 +102,8 @@ export function CustomerDetailModal({
 
   // Slip preview state
   const [previewSlipUrl, setPreviewSlipUrl] = useState<string | null>(null);
+  const [imageLoading, setImageLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     if (!orderId) return;
@@ -538,11 +541,15 @@ export function CustomerDetailModal({
                       )}
 
                       {/* Slip preview trigger */}
-                      {p.slip_path && (
+                      {(p.slip_url || p.slip_path) && (
                         <div className="pt-1">
                           <button
                             type="button"
-                            onClick={() => setPreviewSlipUrl(p.slip_path)}
+                            onClick={() => {
+                              setImageLoading(true);
+                              setImageError(false);
+                              setPreviewSlipUrl(p.slip_url || `/api/admin/slips/${p.id}/image`);
+                            }}
                             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface border border-border hover:border-brand/40 text-[11px] font-medium text-content transition-colors"
                           >
                             <ImageIcon className="w-3.5 h-3.5 text-brand" />
@@ -587,24 +594,70 @@ export function CustomerDetailModal({
 
       {/* Slip Image Fullscreen Modal */}
       {previewSlipUrl && (
-        <div className="fixed inset-0 z-60 bg-black/80 flex items-center justify-center p-4">
-          <div className="relative max-w-lg w-full bg-surface rounded-2xl overflow-hidden p-3 flex flex-col gap-3">
+        <div className="fixed inset-0 z-60 bg-black/80 flex items-center justify-center p-3 sm:p-5">
+          <div className="relative max-w-lg w-full bg-surface rounded-2xl overflow-hidden p-4 flex flex-col gap-3 max-h-[90vh] shadow-2xl border border-border">
             <div className="flex items-center justify-between pb-2 border-b border-border">
-              <span className="text-xs font-bold text-content">หลักฐานสลิปโอนเงิน</span>
-              <button
-                type="button"
-                onClick={() => setPreviewSlipUrl(null)}
-                className="p-1 text-content-muted hover:text-content"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <span className="text-xs font-bold text-content flex items-center gap-1.5">
+                <ImageIcon className="w-4 h-4 text-brand" />
+                หลักฐานสลิปโอนเงิน
+              </span>
+              <div className="flex items-center gap-2">
+                <a
+                  href={previewSlipUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-subtle hover:bg-surface text-[11px] font-medium text-content hover:text-brand border border-border transition-colors"
+                >
+                  <ExternalLink className="w-3 h-3 text-brand" />
+                  <span>เปิดเต็มจอ</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewSlipUrl(null)}
+                  className="p-1 rounded-lg text-content-muted hover:text-content hover:bg-surface-subtle transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={previewSlipUrl}
-              alt="Payment Slip"
-              className="w-full max-h-[70vh] object-contain rounded-xl bg-stone-950"
-            />
+
+            <div className="relative w-full flex items-center justify-center min-h-[260px] bg-stone-950/95 rounded-xl overflow-hidden p-2">
+              {imageLoading && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white/80 z-10 bg-stone-950/70">
+                  <Loader2 className="w-7 h-7 animate-spin text-brand" />
+                  <span className="text-xs font-medium">กำลังโหลดภาพสลิป...</span>
+                </div>
+              )}
+
+              {imageError ? (
+                <div className="p-8 text-center flex flex-col items-center gap-2 text-stone-200">
+                  <AlertTriangle className="w-8 h-8 text-amber-400" />
+                  <span className="text-xs">ไม่สามารถแสดงภาพสลิปได้</span>
+                  <a
+                    href={previewSlipUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-2 px-3 py-1.5 rounded-lg bg-brand text-white text-xs font-bold"
+                  >
+                    ลองเปิดในแท็บใหม่
+                  </a>
+                </div>
+              ) : (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={previewSlipUrl}
+                  alt="Payment Slip"
+                  onLoad={() => setImageLoading(false)}
+                  onError={() => {
+                    setImageLoading(false);
+                    setImageError(true);
+                  }}
+                  className={`w-full max-h-[70vh] object-contain rounded-lg transition-opacity duration-200 ${
+                    imageLoading ? "opacity-0" : "opacity-100"
+                  }`}
+                />
+              )}
+            </div>
           </div>
         </div>
       )}
