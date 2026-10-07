@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { engine } from "@/lib/engine";
+import { EVENT } from "@/config/event.config";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -63,7 +64,11 @@ export async function GET(
         pending_amount: pendingAmount,
         remaining_amount: remainingAmount,
       },
-      promptpay_id: process.env.PROMPTPAY_ID || process.env.NEXT_PUBLIC_PROMPTPAY_ID || "081-234-5678",
+      promptpay_id:
+        process.env.PROMPTPAY_ID ||
+        process.env.NEXT_PUBLIC_PROMPTPAY_ID ||
+        EVENT.promptPay?.id ||
+        "081-234-5678",
       payments: payments.map((p) => ({
         id: p.id,
         amount_thb: p.amount_thb,

@@ -7,26 +7,36 @@ import {
 } from "@/lib/ai-slip-verifier";
 
 describe("AI Slip Verifier - Receiver Matching", () => {
-  it("matches PromptPay phone number in various formats", () => {
-    expect(checkReceiverMatch("0812345678")).toBe(true);
+  it("matches PromptPay National ID in various formats", () => {
     expect(checkReceiverMatch("081-234-5678")).toBe(true);
-    expect(checkReceiverMatch("พร้อมเพย์ 065 751 5085")).toBe(true);
-    expect(checkReceiverMatch("PromptPay: 0812345678 (ผู้จัดงาน)")).toBe(true);
+    expect(checkReceiverMatch("1-8399-01992-65-7")).toBe(true);
+    expect(checkReceiverMatch("พร้อมเพย์ 081-234-5678")).toBe(true);
+    expect(checkReceiverMatch("PromptPay: 081-234-5678 (นาย ผู้จัดงาน)")).toBe(true);
+    expect(checkReceiverMatch("PromptPay: x-xxxx-xxxxx-92657")).toBe(true);
   });
 
   it("matches Bank Account number from event config", () => {
     expect(checkReceiverMatch("xxx-x-xxxxx-x")).toBe(true);
     expect(checkReceiverMatch("xxxxxxxxx")).toBe(true);
-    expect(checkReceiverMatch("xxx-x-47161-8 ธนาคารกสิกรไทย")).toBe(true);
+    expect(checkReceiverMatch("xxx-x-54785 ธนาคารกสิกรไทย")).toBe(true);
+  });
+
+  it("matches QR Reference number", () => {
+    expect(checkReceiverMatch("QR Ref: 000000000000000")).toBe(true);
   });
 
   it("matches Account Holder name keywords", () => {
-    expect(checkReceiverMatch("บัญชีทางการ งานลาบแรกพบ")).toBe(true);
+    expect(checkReceiverMatch("นาย บัญชีทางการ งานลาบแรกพบ")).toBe(true);
     expect(checkReceiverMatch("Event Official Account")).toBe(true);
     expect(checkReceiverMatch("ร้านลาบก้อยซอยนานา")).toBe(true);
   });
 
-  it("rejects unknown accounts or numbers", () => {
+  it("rejects previous account owner and unknown accounts", () => {
+    // 100% full replacement: old account is rejected
+    expect(checkReceiverMatch("บัญชีทางการ งานลาบแรกพบ")).toBe(false);
+    expect(checkReceiverMatch("Event Official Account")).toBe(false);
+    expect(checkReceiverMatch("0812345678")).toBe(false);
+    expect(checkReceiverMatch("xxx-x-xxxxx-x")).toBe(false);
     expect(checkReceiverMatch("081-999-9999 นายสมชาย")).toBe(false);
     expect(checkReceiverMatch("0987654321")).toBe(false);
     expect(checkReceiverMatch(null)).toBe(false);
@@ -95,7 +105,7 @@ describe("AI Slip Verifier - Verification Logic & Mock Hook", () => {
           isValidSlip: true,
           bankName: "KBANK",
           senderName: "นายทดสอบ โอนไว",
-          receiverAccountOrName: "0812345678 ผู้จัดงาน",
+          receiverAccountOrName: "081-234-5678 ผู้จัดงาน",
           transferredAt: new Date().toISOString(),
           amountThb: 49,
           transactionRef: "202610070001",
@@ -129,7 +139,7 @@ describe("AI Slip Verifier - Verification Logic & Mock Hook", () => {
           isValidSlip: true,
           bankName: "KBANK",
           senderName: "นายทดสอบ โอนไว",
-          receiverAccountOrName: "0812345678 ผู้จัดงาน",
+          receiverAccountOrName: "081-234-5678 ผู้จัดงาน",
           transferredAt: new Date().toISOString(),
           amountThb: detectedAmount,
           transactionRef: "202610070002",

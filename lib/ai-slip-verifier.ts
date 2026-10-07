@@ -47,7 +47,15 @@ function getReceiverNames(): string[] {
     const parts = b.accountName.trim().split(/\s+/).map((s) => s.toLowerCase());
     names.push(...parts.filter((p) => p.length >= 3));
   }
-  return [...names, "hatsanan", "taosing", "ร้านลาบก้อยซอยนานา", "ลาบแรกพบ"];
+  return [
+    ...names,
+    "ผู้จัดงาน",
+    "ทางการ",
+    "ramnarongchai",
+    "jantapha",
+    "ร้านลาบก้อยซอยนานา",
+    "ลาบแรกพบ",
+  ];
 }
 
 /**
@@ -56,7 +64,7 @@ function getReceiverNames(): string[] {
  */
 export function checkReceiverMatch(
   receiverText: string | null,
-  targetPromptPay: string = process.env.PROMPTPAY_ID || "0812345678"
+  targetPromptPay: string = process.env.PROMPTPAY_ID || EVENT.promptPay?.id || "081-234-5678"
 ): boolean {
   if (!receiverText) return false;
   const clean = receiverText.replace(/[\s-]/g, "").toLowerCase();
@@ -65,14 +73,30 @@ export function checkReceiverMatch(
   const cleanPromptPay = targetPromptPay.replace(/[\s-]/g, "").toLowerCase();
   if (cleanPromptPay.length >= 10 && clean.includes(cleanPromptPay)) return true;
 
-  // 2. Bank account number (full or masked last 5-6 digits e.g. xxx-x-47161-8)
-  for (const b of EVENT.banks) {
-    const cleanAcc = b.accountNo.replace(/[\s-]/g, "");
-    if (cleanAcc.length >= 10 && clean.includes(cleanAcc)) return true;
-    if (cleanAcc.length >= 5 && clean.includes(cleanAcc.slice(-5))) return true;
+  // Masked PromptPay ID (e.g. 1-8399-xxxxx-xx-x or xxx-xx-92657)
+  if (cleanPromptPay.length === 13) {
+    const last5 = cleanPromptPay.slice(-5);
+    const first5 = cleanPromptPay.slice(0, 5);
+    if (clean.includes(last5) || (clean.includes(first5) && clean.length <= 15)) {
+      return true;
+    }
   }
 
-  // 3. Receiver name or event identity
+  // 2. QR Reference number (e.g. 000000000000000)
+  const qrRef = EVENT.promptPay?.qrReference?.replace(/[\s-]/g, "").toLowerCase();
+  if (qrRef && qrRef.length >= 8 && clean.includes(qrRef)) return true;
+
+  // 3. Bank account number (full or masked last 5-6 digits e.g. xxx-x-54785 or xxx-x-xxxxx-x)
+  for (const b of EVENT.banks) {
+    const cleanAcc = b.accountNo.replace(/[\s-]/g, "");
+    const rawAcc = b.rawAccountNo ? b.rawAccountNo.replace(/[\s-]/g, "") : cleanAcc;
+    if (cleanAcc.length >= 10 && clean.includes(cleanAcc)) return true;
+    if (rawAcc.length >= 10 && clean.includes(rawAcc)) return true;
+    if (cleanAcc.length >= 5 && clean.includes(cleanAcc.slice(-5))) return true;
+    if (rawAcc.length >= 5 && clean.includes(rawAcc.slice(-5))) return true;
+  }
+
+  // 4. Receiver name or event identity
   const lower = receiverText.toLowerCase();
   return getReceiverNames().some((name) => lower.includes(name));
 }

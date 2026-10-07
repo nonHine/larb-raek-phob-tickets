@@ -52,6 +52,8 @@ export default function CheckoutPage({
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [copiedAmount, setCopiedAmount] = useState(false);
   const [copiedBank, setCopiedBank] = useState(false);
+  const [copiedQrRef, setCopiedQrRef] = useState(false);
+  const [copiedPromptPay, setCopiedPromptPay] = useState(false);
 
   // Countdown timer
   const [timeLeftStr, setTimeLeftStr] = useState<string>("");
@@ -174,11 +176,26 @@ export default function CheckoutPage({
     setTimeout(() => setCopiedAmount(false), 2000);
   };
 
-  const handleCopyBank = (no: string) => {
+  const handleCopyBank = (no: string, rawNo?: string) => {
     // Strip hyphens so the copied number pastes cleanly into all banking apps
-    navigator.clipboard.writeText(no.replace(/\D/g, "") || no);
+    const target = rawNo || no.replace(/\D/g, "") || no;
+    navigator.clipboard.writeText(target);
     setCopiedBank(true);
     setTimeout(() => setCopiedBank(false), 2000);
+  };
+
+  const handleCopyPromptPay = () => {
+    const id = EVENT.promptPay?.id || "081-234-5678";
+    navigator.clipboard.writeText(id.replace(/\D/g, "") || id);
+    setCopiedPromptPay(true);
+    setTimeout(() => setCopiedPromptPay(false), 2000);
+  };
+
+  const handleCopyQrRef = () => {
+    const ref = EVENT.promptPay?.qrReference || "000000000000000";
+    navigator.clipboard.writeText(ref.trim());
+    setCopiedQrRef(true);
+    setTimeout(() => setCopiedQrRef(false), 2000);
   };
 
   // Submit slip
@@ -355,6 +372,66 @@ export default function CheckoutPage({
             </div>
           )}
 
+          <div className="flex flex-col items-center gap-2 w-full max-w-xs text-xs">
+            <div className="font-bold text-content text-sm">
+              ชื่อบัญชี: {EVENT.promptPay?.name || "บัญชีทางการ งานลาบแรกพบ"}
+            </div>
+
+            {/* PromptPay Number */}
+            <div className="flex items-center justify-between w-full p-2.5 rounded-xl bg-surface-subtle border border-border">
+              <span className="text-content-muted text-[11px]">พร้อมเพย์:</span>
+              <span className="font-mono font-bold text-content text-xs">
+                {EVENT.promptPay?.id || "081-234-5678"}
+              </span>
+              <button
+                type="button"
+                onClick={handleCopyPromptPay}
+                className="px-2 py-1 rounded-lg border border-border bg-surface text-content hover:text-brand flex items-center gap-1 transition-colors"
+                title="คัดลอกเลขพร้อมเพย์"
+              >
+                {copiedPromptPay ? (
+                  <>
+                    <Check className="w-3 h-3 text-status-success" />
+                    <span className="text-[10px]">คัดลอกแล้ว</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3 h-3" />
+                    <span className="text-[10px]">คัดลอก</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* QR Reference if present */}
+            {EVENT.promptPay?.qrReference && (
+              <div className="flex items-center justify-between w-full p-2.5 rounded-xl bg-surface-subtle border border-border">
+                <span className="text-content-muted text-[11px]">เลขอ้างอิง QR:</span>
+                <span className="font-mono font-bold text-content text-xs">
+                  {EVENT.promptPay.qrReference}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleCopyQrRef}
+                  className="px-2 py-1 rounded-lg border border-border bg-surface text-content hover:text-brand flex items-center gap-1 transition-colors"
+                  title="คัดลอกเลขอ้างอิง QR"
+                >
+                  {copiedQrRef ? (
+                    <>
+                      <Check className="w-3 h-3 text-status-success" />
+                      <span className="text-[10px]">คัดลอกแล้ว</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3 h-3" />
+                      <span className="text-[10px]">คัดลอก</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+
           <span className="text-xs text-content-muted max-w-xs leading-relaxed">
             * สแกน QR แล้วระบบจะใส่ยอด {order.remaining_amount} บาทให้อัตโนมัติ จากนั้นแคปภาพสลิปมาแนบด้านล่าง
           </span>
@@ -382,8 +459,9 @@ export default function CheckoutPage({
                 </div>
                 <button
                   type="button"
-                  onClick={() => handleCopyBank(bank.accountNo)}
+                  onClick={() => handleCopyBank(bank.accountNo, bank.rawAccountNo)}
                   className="px-2.5 py-1.5 rounded-lg border border-border bg-surface text-content hover:text-brand flex items-center gap-1 transition-colors"
+                  title="คัดลอกเลขบัญชี"
                 >
                   {copiedBank ? (
                     <>

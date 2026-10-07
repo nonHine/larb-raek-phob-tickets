@@ -105,8 +105,9 @@ function triggerVibration(pattern: number[] = [80, 40, 80]) {
 }
 
 const TICKET_PRICE = EVENT.ticketPriceThb || 49;
-const PROMPTPAY_NUMBER = "0812345678";
-const PROMPTPAY_NAME = "บัญชีทางการ งานลาบแรกพบ";
+const PROMPTPAY_NUMBER = EVENT.promptPay?.id || "081-234-5678";
+const PROMPTPAY_NAME = EVENT.promptPay?.name || "บัญชีทางการ งานลาบแรกพบ";
+const PROMPTPAY_QR_REF = EVENT.promptPay?.qrReference || "000000000000000";
 
 export default function StaffWalkUpPage() {
   // Venue Status
@@ -124,6 +125,7 @@ export default function StaffWalkUpPage() {
   const [promptPayQrUrl, setPromptPayQrUrl] = useState<string | null>(null);
   const [showPromptPayModal, setShowPromptPayModal] = useState(false);
   const [copiedPhone, setCopiedPhone] = useState(false);
+  const [copiedQrRef, setCopiedQrRef] = useState(false);
 
   // Submission State
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -224,6 +226,14 @@ export default function StaffWalkUpPage() {
       navigator.clipboard.writeText(PROMPTPAY_NUMBER);
       setCopiedPhone(true);
       setTimeout(() => setCopiedPhone(false), 2000);
+    }
+  };
+
+  const handleCopyQrRef = () => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(PROMPTPAY_QR_REF);
+      setCopiedQrRef(true);
+      setTimeout(() => setCopiedQrRef(false), 2000);
     }
   };
 
@@ -642,7 +652,7 @@ export default function StaffWalkUpPage() {
                         type="button"
                         onClick={handleCopyPhone}
                         className="text-xs text-sky-700 hover:text-sky-900 p-1 rounded-md hover:bg-sky-100 transition-colors"
-                        title="คัดลอกเบอร์"
+                        title="คัดลอกเลขพร้อมเพย์"
                       >
                         {copiedPhone ? (
                           <Check className="w-3.5 h-3.5 text-emerald-600" />
@@ -651,9 +661,27 @@ export default function StaffWalkUpPage() {
                         )}
                       </button>
                     </div>
-                    <span className="text-xs text-slate-600">
+                    <span className="text-xs text-slate-600 block">
                       ชื่อบัญชี: {PROMPTPAY_NAME}
                     </span>
+                    {PROMPTPAY_QR_REF && (
+                      <div className="flex items-center gap-1.5 mt-1 text-[11px] text-slate-600">
+                        <span>เลขอ้างอิง QR:</span>
+                        <span className="font-mono font-bold text-slate-800">{PROMPTPAY_QR_REF}</span>
+                        <button
+                          type="button"
+                          onClick={handleCopyQrRef}
+                          className="p-1 text-sky-700 hover:text-sky-900 rounded hover:bg-sky-100 transition-colors"
+                          title="คัดลอกเลขอ้างอิง QR"
+                        >
+                          {copiedQrRef ? (
+                            <Check className="w-3 h-3 text-emerald-600" />
+                          ) : (
+                            <Copy className="w-3 h-3" />
+                          )}
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   <span className="text-right font-black text-brand text-base sm:text-lg">
@@ -838,6 +866,11 @@ export default function StaffWalkUpPage() {
               <div className="text-xs text-slate-600 font-semibold">
                 {PROMPTPAY_NUMBER} ({PROMPTPAY_NAME})
               </div>
+              {PROMPTPAY_QR_REF && (
+                <div className="text-[11px] text-slate-500 font-mono">
+                  เลขอ้างอิง QR: {PROMPTPAY_QR_REF}
+                </div>
+              )}
               <p className="text-[11px] text-slate-400 mt-1">
                 เปิดแอปธนาคารแล้วสแกน QR Code นี้ได้เลย
               </p>

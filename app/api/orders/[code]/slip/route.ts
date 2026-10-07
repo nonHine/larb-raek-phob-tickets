@@ -4,6 +4,7 @@ import { engine } from "@/lib/engine";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendEmail } from "@/lib/email";
 import { verifySlipWithAI } from "@/lib/ai-slip-verifier";
+import { EVENT } from "@/config/event.config";
 
 export const dynamic = "force-dynamic";
 
@@ -239,7 +240,8 @@ export async function POST(
           buffer,
           mimeType: sniffed.mime,
           expectedAmount: order.total_thb,
-          targetPromptPay: process.env.PROMPTPAY_ID || "0812345678",
+          targetPromptPay:
+            process.env.PROMPTPAY_ID || EVENT.promptPay?.id || "081-234-5678",
           orderCreatedAt: order.created_at,
         });
         await engine.recordAiAnalysis(payment.id, verification);
