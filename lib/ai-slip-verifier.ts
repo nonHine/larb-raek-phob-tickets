@@ -154,36 +154,55 @@ Extract the following details as strictly JSON with no markdown wrapping:
 }
 `;
 
-    const modelName = process.env.GEMINI_MODEL || "gemini-3.8-flash";
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+    const primaryModel = process.env.GEMINI_MODEL || "gemini-3.5-flash";
+    const candidateModels = [
+      primaryModel,
+      "gemini-3.5-flash",
+      "gemini-3.1-flash-lite-preview",
+      "gemini-3.8-flash",
+    ].filter((m, idx, arr) => arr.indexOf(m) === idx);
 
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              { text: prompt },
-              {
-                inline_data: {
-                  mime_type: mimeType,
-                  data: base64Data,
+    let res: Response | null = null;
+    let successfulModel = primaryModel;
+
+    for (const modelName of candidateModels) {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+      const r = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: prompt },
+                {
+                  inline_data: {
+                    mime_type: mimeType,
+                    data: base64Data,
+                  },
                 },
-              },
-            ],
+              ],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.1,
+            responseMimeType: "application/json",
           },
-        ],
-        generationConfig: {
-          temperature: 0.1,
-          responseMimeType: "application/json",
-        },
-      }),
-    });
+        }),
+      });
 
-    if (!res.ok) {
-      const errBody = await res.text();
-      console.error(`Gemini API error (${res.status}) model=${modelName}:`, errBody);
+      if (r.ok) {
+        res = r;
+        successfulModel = modelName;
+        break;
+      }
+
+      console.warn(`Gemini API ${modelName} returned HTTP ${r.status}. Trying next model...`);
+      res = r;
+    }
+
+    if (!res || !res.ok) {
+      const status = res ? res.status : 500;
       return {
         analysis: {
           isValidSlip: true,
@@ -194,12 +213,12 @@ Extract the following details as strictly JSON with no markdown wrapping:
           amountThb: null,
           transactionRef: null,
           confidenceScore: 0,
-          reason: `Gemini API HTTP ${res.status} (model ${modelName})`,
+          reason: `Gemini API HTTP ${status}`,
         },
         isMatchingAmount: false,
         isMatchingReceiver: false,
         isAutoApprovable: false,
-        summaryText: `เกิดข้อผิดพลาดในการเชื่อมต่อ Gemini API (${res.status}) — รอตรวจด้วยมือ`,
+        summaryText: `เกิดข้อผิดพลาดในการเชื่อมต่อ Gemini API (${status}) — รอตรวจด้วยมือ`,
       };
     }
 
