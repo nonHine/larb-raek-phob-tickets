@@ -1354,6 +1354,37 @@ export class OrderEngine {
     return list;
   }
 
+  public async getTicketById(id: string): Promise<Ticket | null> {
+    if (!id || !id.trim()) return null;
+    const cleanId = id.trim();
+
+    if (this.isSupabaseReady()) {
+      try {
+        const { data, error } = await supabaseAdmin
+          .from("tickets")
+          .select("*")
+          .eq("id", cleanId)
+          .maybeSingle();
+
+        if (error) {
+          console.error("Supabase getTicketById error:", error);
+          return null;
+        }
+        if (!data) return null;
+
+        const t = data as Ticket;
+        this.tickets.set(t.id, t);
+        return { ...t };
+      } catch (err) {
+        console.error("Supabase getTicketById exception:", err);
+        return null;
+      }
+    }
+
+    const t = this.tickets.get(cleanId);
+    return t ? { ...t } : null;
+  }
+
   public async getTicketByCode(code: string): Promise<Ticket | null> {
     const cleanCode = code.trim().toUpperCase();
 
@@ -1403,7 +1434,9 @@ export class OrderEngine {
       }
   > {
     const cleanCode = code.trim().toUpperCase();
-    const ticket = await this.getTicketByCode(cleanCode);
+    const ticket =
+      (await this.getTicketByCode(cleanCode)) ||
+      (await this.getTicketById(code.trim()));
     if (!ticket) {
       return { success: false, error: "invalid_ticket" };
     }
@@ -1506,6 +1539,62 @@ export class OrderEngine {
     } finally {
       releaseLock();
     }
+  }
+
+  // --- Check-in All Issued Tickets For Order ---
+  public async checkInTicketsForOrder(
+    orderId: string,
+    staffId: string
+  ): Promise<{
+    success: boolean;
+    order: Order | null;
+    checkedInCount: number;
+    alreadyCheckedInCount: number;
+    tickets: Ticket[];
+  }> {
+    const order = await this.getOrderById(orderId);
+    if (!order) {
+      return {
+        success: false,
+        order: null,
+        checkedInCount: 0,
+        alreadyCheckedInCount: 0,
+        tickets: [],
+      };
+    }
+
+    const allTickets = await this.getTicketsForOrder(orderId);
+    let checkedInCount = 0;
+    let alreadyCheckedInCount = 0;
+    const updatedTickets: Ticket[] = [];
+
+    for (const t of allTickets) {
+      if (t.status === "issued") {
+        const res = await this.checkInTicket(t.code, staffId);
+        if (res.success) {
+          checkedInCount++;
+          updatedTickets.push(res.ticket);
+        } else if (res.error === "already_checked_in") {
+          alreadyCheckedInCount++;
+          updatedTickets.push(res.ticket || t);
+        } else {
+          updatedTickets.push(t);
+        }
+      } else if (t.status === "checked_in") {
+        alreadyCheckedInCount++;
+        updatedTickets.push(t);
+      } else {
+        updatedTickets.push(t);
+      }
+    }
+
+    return {
+      success: true,
+      order,
+      checkedInCount,
+      alreadyCheckedInCount,
+      tickets: updatedTickets,
+    };
   }
 
   // --- Admin Cancel Order ---

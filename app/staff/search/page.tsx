@@ -1,17 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { StaffHeader } from "@/components/admin/StaffHeader";
 import {
   Search,
   ArrowLeft,
   CheckCircle2,
   AlertTriangle,
-  QrCode,
   Loader2,
-  User,
-  Phone,
   Zap,
 } from "lucide-react";
 
@@ -27,8 +25,11 @@ interface TicketSearchResult {
   order_status: string;
 }
 
-export default function StaffSearchPage() {
-  const [query, setQuery] = useState("");
+function StaffSearchContent() {
+  const searchParams = useSearchParams();
+  const qParam = searchParams.get("q");
+
+  const [query, setQuery] = useState(qParam || "");
   const [results, setResults] = useState<TicketSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
@@ -38,9 +39,9 @@ export default function StaffSearchPage() {
     message: string;
   } | null>(null);
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!query.trim()) return;
+  const executeSearch = useCallback(async (searchQuery: string) => {
+    const trimmed = searchQuery.trim();
+    if (!trimmed) return;
 
     setLoading(true);
     setHasSearched(true);
@@ -48,7 +49,7 @@ export default function StaffSearchPage() {
 
     try {
       const res = await fetch(
-        `/api/staff/search?q=${encodeURIComponent(query.trim())}`
+        `/api/staff/search?q=${encodeURIComponent(trimmed)}`
       );
       if (res.ok) {
         const data = await res.json();
@@ -59,6 +60,18 @@ export default function StaffSearchPage() {
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    if (qParam && qParam.trim()) {
+      setQuery(qParam.trim());
+      executeSearch(qParam.trim());
+    }
+  }, [qParam, executeSearch]);
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    executeSearch(query);
   };
 
   const handleCheckIn = async (ticket: TicketSearchResult) => {
@@ -294,5 +307,19 @@ export default function StaffSearchPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function StaffSearchPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-col min-h-screen bg-surface-subtle items-center justify-center p-8 text-xs text-content-muted">
+          กำลังโหลดข้อมูล...
+        </div>
+      }
+    >
+      <StaffSearchContent />
+    </Suspense>
   );
 }

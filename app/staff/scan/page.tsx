@@ -16,16 +16,42 @@ import {
   Upload,
   RotateCcw,
   Zap,
+  Ticket,
 } from "lucide-react";
+
+interface OrderTicketItem {
+  id: string;
+  code: string;
+  holder_name: string;
+  status: "issued" | "checked_in" | "void";
+  checked_in_at?: string | null;
+  checked_in_by?: string | null;
+}
 
 interface ScannedResult {
   code: string;
-  status: "idle" | "ready_to_checkin" | "checked_in_success" | "already_checked_in" | "invalid";
+  status:
+    | "idle"
+    | "ready_to_checkin"
+    | "checked_in_success"
+    | "already_checked_in"
+    | "order_tickets_view"
+    | "invalid";
   holderName?: string;
   orderCode?: string;
   checkedInAt?: string;
   checkedInBy?: string;
   errorMessage?: string;
+  orderData?: {
+    id: string;
+    code: string;
+    buyer_name: string;
+    phone: string;
+    quantity: number;
+    tickets: OrderTicketItem[];
+    issued_count: number;
+    checked_in_count: number;
+  };
 }
 
 // Synthesize pleasant chime or error buzz using Web Audio API
@@ -113,12 +139,12 @@ export default function StaffScanPage() {
     }
   }, []);
 
-  // Process ticket code through the API
+  // Process ticket or order code through the API
   const processTicketCode = useCallback(async (rawCode: string) => {
     const code = rawCode.trim().toUpperCase();
     if (!code) return;
 
-    // 2-second debounce against repeated scans
+    // 2-second debounce against repeated scans of identical content
     const now = Date.now();
     if (code === lastScannedCode.current && now - lastScanTimestamp.current < 2000) {
       return;
@@ -151,15 +177,41 @@ export default function StaffScanPage() {
       const data = await res.json();
 
       if (res.ok) {
-        playScanSound("success");
-        triggerVibration([80, 40, 120]);
-        setScanResult({
-          code,
-          status: "checked_in_success",
-          holderName: data.ticket?.holder_name,
-          orderCode: data.ticket?.order_code,
-          checkedInAt: data.ticket?.checked_in_at,
-        });
+        if (data.is_order && data.tickets) {
+          // Multiple tickets under an order scanned!
+          playScanSound("success");
+          triggerVibration([80, 40, 120]);
+          setScanResult({
+            code,
+            status: "order_tickets_view",
+            orderCode: data.order?.code,
+            orderData: {
+              id: data.order?.id,
+              code: data.order?.code,
+              buyer_name: data.order?.buyer_name,
+              phone: data.order?.phone,
+              quantity: data.order?.quantity,
+              tickets: data.tickets,
+              issued_count:
+                data.issued_count ??
+                data.tickets.filter((t: any) => t.status === "issued").length,
+              checked_in_count:
+                data.checked_in_count ??
+                data.tickets.filter((t: any) => t.status === "checked_in").length,
+            },
+          });
+        } else {
+          // Single ticket successfully checked in!
+          playScanSound("success");
+          triggerVibration([80, 40, 120]);
+          setScanResult({
+            code,
+            status: "checked_in_success",
+            holderName: data.ticket?.holder_name,
+            orderCode: data.ticket?.order_code,
+            checkedInAt: data.ticket?.checked_in_at,
+          });
+        }
       } else if (res.status === 409) {
         playScanSound("error");
         triggerVibration([200, 100, 200]);
@@ -169,6 +221,8 @@ export default function StaffScanPage() {
           checkedInAt: data.checked_in_at,
           checkedInBy: data.checked_in_by,
           errorMessage: data.message,
+          holderName: data.ticket?.holder_name || data.order?.buyer_name,
+          orderCode: data.ticket?.order_code || data.order?.code,
         });
       } else {
         playScanSound("error");
@@ -176,7 +230,7 @@ export default function StaffScanPage() {
         setScanResult({
           code,
           status: "invalid",
-          errorMessage: data.message || "บัตรไม่ถูกต้อง",
+          errorMessage: data.message || "บัตรไม่ถูกต้อง หรือไม่พบในระบบ",
         });
       }
     } catch {
@@ -321,6 +375,147 @@ export default function StaffScanPage() {
     }
   }, [scanResult.status, resetScanner]);
 
+  // Global keydown capture for hardware barcode / 2D QR scanners
+  // Prevents scanner's Enter key from activating links (e.g. accidentally clicking Search)
+  useEffect(() => {
+    let buffer = "";
+    let lastKeyTime = 0;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if user is intentionally typing into a regular input or textarea
+      const targetTag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      if (targetTag === "input" || targetTag === "textarea") {
+        return;
+      }
+
+      const now = Date.now();
+
+      // If more than 200ms elapsed since last keystroke, clear previous buffer
+      if (now - lastKeyTime > 200) {
+        buffer = "";
+      }
+      lastKeyTime = now;
+
+      if (e.key === "Enter") {
+        // Crucial: Prevent Enter from activating any focused link or submitting random forms!
+        e.preventDefault();
+        e.stopPropagation();
+
+        const candidate = buffer.trim();
+        buffer = "";
+        if (candidate.length >= 3) {
+          processTicketCode(candidate);
+        }
+        return;
+      }
+
+      // Collect printable characters from scanner
+      if (e.key.length === 1) {
+        buffer += e.key;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown, true);
+    };
+  }, [processTicketCode]);
+
+  // Check in an individual ticket within an order view
+  const handleCheckInSingleInOrder = async (ticketCode: string) => {
+    setProcessing(true);
+    try {
+      const res = await fetch("/api/staff/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ticket_code: ticketCode,
+          staff_id: "staff-gate-1",
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        playScanSound("success");
+        triggerVibration([80, 40, 120]);
+        setScanResult((prev) => {
+          if (!prev.orderData) return prev;
+          const updatedTickets = prev.orderData.tickets.map((t) =>
+            t.code === ticketCode
+              ? {
+                  ...t,
+                  status: "checked_in" as const,
+                  checked_in_at: new Date().toISOString(),
+                }
+              : t
+          );
+          const remainingIssued = updatedTickets.filter((t) => t.status === "issued").length;
+          return {
+            ...prev,
+            orderData: {
+              ...prev.orderData,
+              tickets: updatedTickets,
+              issued_count: remainingIssued,
+              checked_in_count: updatedTickets.length - remainingIssued,
+            },
+          };
+        });
+      } else {
+        playScanSound("error");
+        alert(data.message || "ไม่สามารถเช็กอินใบนี้ได้");
+      }
+    } catch {
+      playScanSound("error");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  // Check in all remaining tickets for an order in 1 tap
+  const handleCheckInAllInOrder = async () => {
+    if (!scanResult.orderData?.id) return;
+    setProcessing(true);
+    try {
+      const res = await fetch("/api/staff/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "check_in_all",
+          order_id: scanResult.orderData.id,
+          staff_id: "staff-gate-1",
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        playScanSound("success");
+        triggerVibration([80, 40, 120]);
+        setScanResult((prev) => {
+          if (!prev.orderData) return prev;
+          const updatedTickets = prev.orderData.tickets.map((t) => ({
+            ...t,
+            status: "checked_in" as const,
+            checked_in_at: new Date().toISOString(),
+          }));
+          return {
+            ...prev,
+            orderData: {
+              ...prev.orderData,
+              tickets: updatedTickets,
+              issued_count: 0,
+              checked_in_count: updatedTickets.length,
+            },
+          };
+        });
+      } else {
+        playScanSound("error");
+        alert(data.message || "เกิดข้อผิดพลาดในการเช็กอินทั้งหมด");
+      }
+    } catch {
+      playScanSound("error");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   // Handle image file scan fallback
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -362,7 +557,7 @@ export default function StaffScanPage() {
       <StaffHeader staffRole="scanner" />
 
       <div className="p-4 sm:p-6 flex flex-col gap-4 flex-1 max-w-lg mx-auto w-full">
-        {/* Title & Manual search link */}
+        {/* Title & Navigation links */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <QrCode className="w-5 h-5 text-status-success" />
@@ -372,6 +567,7 @@ export default function StaffScanPage() {
           <div className="flex items-center gap-2">
             <Link
               href="/staff/walk-up"
+              tabIndex={-1}
               className="px-3 py-1.5 rounded-lg border border-brand/30 bg-brand/5 text-brand hover:bg-brand hover:text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors"
             >
               <Zap className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
@@ -380,6 +576,7 @@ export default function StaffScanPage() {
 
             <Link
               href="/staff/search"
+              tabIndex={-1}
               className="px-3 py-1.5 rounded-lg border border-border bg-surface text-content hover:text-brand text-xs font-semibold flex items-center gap-1.5 shadow-sm"
             >
               <Search className="w-3.5 h-3.5" />
@@ -414,7 +611,7 @@ export default function StaffScanPage() {
             <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center gap-3 p-6 text-center">
               <Loader2 className="w-10 h-10 text-status-success animate-spin" />
               <span className="text-sm font-semibold">กำลังเชื่อมต่อกล้อง...</span>
-              <span className="text-xs text-white/60">หากมีหน้าต่างขอสิทธิ์กล้อง โปรดกด 'อนุญาต' (Allow)</span>
+              <span className="text-xs text-white/60">หากมีหน้าต่างขอสิทธิ์กล้อง โปรดกด &apos;อนุญาต&apos; (Allow)</span>
             </div>
           )}
 
@@ -494,11 +691,112 @@ export default function StaffScanPage() {
         {processing && (
           <div className="p-4 rounded-2xl bg-surface border border-border flex items-center justify-center gap-2 text-content font-medium text-sm shadow-sm">
             <Loader2 className="w-5 h-5 animate-spin text-brand" />
-            <span>กำลังตรวจสอบรหัสบัตร...</span>
+            <span>กำลังตรวจสอบรหัสบัตร / ออเดอร์...</span>
           </div>
         )}
 
-        {/* SUCCESS CHECK-IN */}
+        {/* MULTI-TICKET ORDER CHECK-IN SCREEN */}
+        {scanResult.status === "order_tickets_view" && scanResult.orderData && (
+          <div className="p-5 rounded-2xl bg-surface border-2 border-brand/30 shadow-lg flex flex-col gap-3.5 animate-in zoom-in-95">
+            <div className="flex items-start justify-between pb-3 border-b border-border">
+              <div className="flex flex-col">
+                <div className="flex items-center gap-1.5 text-brand font-bold text-sm">
+                  <Ticket className="w-4 h-4" />
+                  <span>คำสั่งซื้อ {scanResult.orderData.code}</span>
+                </div>
+                <span className="font-semibold text-content text-base mt-0.5">
+                  {scanResult.orderData.buyer_name}
+                </span>
+                {scanResult.orderData.phone && scanResult.orderData.phone !== "-" && (
+                  <span className="text-xs text-content-muted">
+                    เบอร์: {scanResult.orderData.phone}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex flex-col items-end gap-1 text-[11px] font-semibold">
+                <span className="px-2 py-0.5 rounded-full bg-status-success-subtle text-status-success">
+                  เข้างานแล้ว {scanResult.orderData.checked_in_count} / {scanResult.orderData.tickets.length}
+                </span>
+                {scanResult.orderData.issued_count > 0 && (
+                  <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                    รอเข้างาน {scanResult.orderData.issued_count} ใบ
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* List of tickets */}
+            <div className="flex flex-col gap-2 max-h-60 overflow-y-auto pr-1">
+              {scanResult.orderData.tickets.map((t, idx) => (
+                <div
+                  key={t.id}
+                  className={`p-3 rounded-xl border flex items-center justify-between text-xs transition-colors ${
+                    t.status === "checked_in"
+                      ? "bg-status-success-subtle/50 border-status-success/30 text-content"
+                      : "bg-surface border-border text-content"
+                  }`}
+                >
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-semibold">
+                      ใบที่ {idx + 1}: {t.holder_name}
+                    </span>
+                    <span className="font-mono text-[10px] text-content-muted">
+                      รหัส: {t.code.slice(0, 10)}...
+                    </span>
+                  </div>
+
+                  <div>
+                    {t.status === "checked_in" ? (
+                      <span className="inline-flex items-center gap-1 text-status-success font-semibold text-xs px-2.5 py-1 rounded-lg bg-status-success/10">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>เข้างานแล้ว</span>
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={processing}
+                        onClick={() => handleCheckInSingleInOrder(t.code)}
+                        className="px-3 py-1.5 rounded-lg bg-status-success hover:bg-status-success/90 text-white font-bold text-xs shadow-sm transition-all disabled:opacity-50"
+                      >
+                        เช็กอินใบนี้
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex flex-col gap-2 pt-2 border-t border-border">
+              {scanResult.orderData.issued_count > 0 && (
+                <button
+                  type="button"
+                  disabled={processing}
+                  onClick={handleCheckInAllInOrder}
+                  className="w-full h-11 rounded-xl bg-status-success hover:bg-status-success/90 text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>
+                    เช็กอินทั้งหมดที่เหลือ ({scanResult.orderData.issued_count} ใบ)
+                  </span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={resetScanner}
+                className="w-full h-10 rounded-xl bg-surface-subtle hover:bg-surface border border-border text-content font-semibold text-xs transition-colors"
+              >
+                {scanResult.orderData.issued_count === 0
+                  ? "เสร็จสิ้น / พร้อมสแกนใบถัดไป"
+                  : "ปิดหน้านี้ / สแกนใบถัดไป"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* SUCCESS CHECK-IN (SINGLE TICKET) */}
         {scanResult.status === "checked_in_success" && (
           <div className="p-5 rounded-2xl bg-status-success text-white shadow-md flex flex-col items-center text-center gap-2 animate-in zoom-in-95">
             <CheckCircle2 className="w-12 h-12" />
@@ -528,7 +826,7 @@ export default function StaffScanPage() {
           </div>
         )}
 
-        {/* ALREADY CHECKED IN (RED BANNER) */}
+        {/* ALREADY CHECKED IN (RED/AMBER BANNER) */}
         {scanResult.status === "already_checked_in" && (
           <div className="p-5 rounded-2xl bg-status-danger text-white shadow-md flex flex-col items-center text-center gap-2 animate-in zoom-in-95">
             <AlertTriangle className="w-12 h-12" />
@@ -538,6 +836,12 @@ export default function StaffScanPage() {
             <p className="text-xs text-white/90">
               ไม่อนุญาตให้ใช้บัตรซ้ำ (งานนี้ไม่มีระบบ check-out หรือเข้าซ้ำ)
             </p>
+            {scanResult.holderName && (
+              <div className="text-xs bg-white/10 rounded-xl p-2.5 w-full flex flex-col gap-0.5 text-left mt-1">
+                <span>ผู้ถือบัตร: <strong>{scanResult.holderName}</strong></span>
+                {scanResult.orderCode && <span>รหัสออเดอร์: {scanResult.orderCode}</span>}
+              </div>
+            )}
             <button
               type="button"
               onClick={resetScanner}
@@ -567,7 +871,8 @@ export default function StaffScanPage() {
                 ลองใหม่
               </button>
               <Link
-                href="/staff/search"
+                href={`/staff/search?q=${encodeURIComponent(scanResult.code)}`}
+                tabIndex={-1}
                 className="w-1/2 h-11 rounded-xl bg-white text-status-danger font-bold text-xs flex items-center justify-center shadow-sm"
               >
                 ค้นหาด้วยชื่อ/เบอร์
@@ -582,12 +887,12 @@ export default function StaffScanPage() {
           className="p-4 rounded-2xl border border-border bg-surface flex flex-col gap-2.5 shadow-sm"
         >
           <span className="text-xs font-semibold text-content">
-            หรือกรอกรหัสบัตร / ใช้เครื่องสแกนบาร์โค้ด
+            หรือกรอกรหัสบัตร / รหัสออเดอร์ (เช่น LRP-XXXXXX)
           </span>
           <div className="flex gap-2">
             <input
               type="text"
-              placeholder="วางหรือพิมพ์รหัสบัตร (เช่น LRP-TKT-...)"
+              placeholder="วางหรือพิมพ์รหัสบัตร / ออเดอร์..."
               value={manualCode}
               onChange={(e) => setManualCode(e.target.value)}
               className="flex-1 h-11 px-3 rounded-xl border border-border text-xs font-mono uppercase focus:outline-none focus:ring-2 focus:ring-brand/20"
