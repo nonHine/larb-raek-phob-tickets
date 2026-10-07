@@ -14,6 +14,7 @@ import {
   Clock,
   Loader2,
   Search,
+  Zap,
 } from "lucide-react";
 
 interface StaffHeaderProps {
@@ -247,6 +248,18 @@ export function StaffHeader({
           >
             <Search className="w-3.5 h-3.5 flex-shrink-0" />
             <span>ค้นหาบัตร</span>
+          </Link>
+
+          <Link
+            href="/staff/walk-up"
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all flex-shrink-0 ${
+              pathname === "/staff/walk-up"
+                ? "bg-brand text-white shadow-sm"
+                : "text-content-muted hover:text-content hover:bg-surface-subtle"
+            }`}
+          >
+            <Zap className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>ขายหน้าร้าน (POS)</span>
           </Link>
         </nav>
       </header>

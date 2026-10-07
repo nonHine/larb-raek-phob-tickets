@@ -30,6 +30,22 @@ export interface AddPaymentInput {
   slip_url?: string | null;
 }
 
+export interface CreateWalkUpOrderInput {
+  buyer_name: string;
+  phone?: string | null;
+  quantity: number;
+  payment_method: "cash_onsite" | "promptpay_onsite";
+  check_in_now_count?: number; // จำนวนใบที่เช็คอินทันที ค่าเริ่มต้นคือ quantity
+  staff_id?: string | null;
+}
+
+export interface CreateWalkUpOrderResult {
+  success: true;
+  order: Order;
+  payment: Payment;
+  tickets: Ticket[];
+}
+
 function toUuid(str?: string | null): string | null {
   if (!str) return null;
   if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)) {
@@ -370,6 +386,218 @@ export class OrderEngine {
     return { success: true, order: { ...order } };
   }
 
+  // --- Walk-up Ticket Sales (Onsite Door Sale) ---
+  public async createWalkUpOrder(
+    input: CreateWalkUpOrderInput
+  ): Promise<CreateWalkUpOrderResult> {
+    const trimmedBuyer = input.buyer_name?.trim();
+    const buyer_name =
+      trimmedBuyer && trimmedBuyer.length > 0 ? trimmedBuyer : "ลูกค้าหน้างาน";
+
+    const quantity = Math.floor(Number(input.quantity));
+    if (isNaN(quantity) || quantity < 1) {
+      throw new Error("invalid_quantity");
+    }
+
+    if (
+      input.payment_method !== "cash_onsite" &&
+      input.payment_method !== "promptpay_onsite"
+    ) {
+      throw new Error("invalid_payment_method");
+    }
+
+    const total_thb = quantity * EVENT.ticketPriceThb;
+
+    const checkInInput = input.check_in_now_count;
+    const finalCheckInNowCount =
+      checkInInput !== undefined && checkInInput !== null
+        ? Math.max(0, Math.min(quantity, Math.floor(Number(checkInInput))))
+        : quantity;
+
+    const staffId = input.staff_id?.trim() || "staff_door";
+    const phone = input.phone?.trim() || "-";
+
+    const now = new Date().toISOString();
+    const orderId = crypto.randomUUID();
+    const randomCodeSuffix = crypto.randomBytes(3).toString("hex").toUpperCase();
+    const orderCode = `${EVENT.orderCodePrefix}-${randomCodeSuffix}`;
+    const accessToken = crypto.randomBytes(24).toString("hex");
+    const email = `walkup-${orderCode.toLowerCase()}@larbraekphob.local`;
+
+    const order: Order = {
+      id: orderId,
+      code: orderCode,
+      access_token: accessToken,
+      buyer_name,
+      phone,
+      email,
+      backup_contact: null,
+      quantity,
+      unit_price_thb: EVENT.ticketPriceThb,
+      total_thb,
+      status: "paid",
+      expires_at: null,
+      consented_at: now,
+      admin_note: `Walk-up sale (${input.payment_method}) by ${staffId}`,
+      created_at: now,
+    };
+
+    const paymentId = crypto.randomUUID();
+    const toBank =
+      input.payment_method === "cash_onsite"
+        ? "เงินสดหน้าร้าน"
+        : "พร้อมเพย์หน้าร้าน";
+
+    const payment: Payment = {
+      id: paymentId,
+      order_id: order.id,
+      slip_path: `walkup/${order.code}`,
+      slip_sha256: crypto.createHash("sha256").update(paymentId).digest("hex"),
+      amount_thb: total_thb,
+      transferred_at: now,
+      to_bank: toBank,
+      payer_name_or_last4: buyer_name,
+      status: "approved",
+      reviewed_by: staffId,
+      reviewed_at: now,
+      approved_at: now,
+      reject_reason: null,
+      created_at: now,
+    };
+
+    const tickets: Ticket[] = [];
+    for (let i = 0; i < quantity; i++) {
+      const ticketId = crypto.randomUUID();
+      const ticketCode = crypto.randomBytes(16).toString("hex").toUpperCase();
+      const isCheckedIn = i < finalCheckInNowCount;
+
+      const ticket: Ticket = {
+        id: ticketId,
+        order_id: order.id,
+        code: ticketCode,
+        holder_name: buyer_name,
+        status: isCheckedIn ? "checked_in" : "issued",
+        checked_in_at: isCheckedIn ? now : null,
+        checked_in_by: isCheckedIn ? staffId : null,
+        created_at: now,
+      };
+      tickets.push(ticket);
+    }
+
+    if (this.isSupabaseReady()) {
+      try {
+        const { error: orderError } = await supabaseAdmin.from("orders").insert({
+          id: order.id,
+          code: order.code,
+          access_token: order.access_token,
+          buyer_name: order.buyer_name,
+          phone: /^0[0-9]{9}$/.test(order.phone) ? order.phone : "0000000000",
+          email: order.email,
+          backup_contact: order.backup_contact,
+          quantity: order.quantity,
+          unit_price_thb: order.unit_price_thb,
+          total_thb: order.total_thb,
+          status: order.status,
+          expires_at: order.expires_at,
+          consented_at: order.consented_at,
+          admin_note: order.admin_note,
+          created_at: order.created_at,
+        });
+
+        if (orderError) {
+          console.error("Supabase createWalkUpOrder insert order error:", orderError);
+          throw new Error(orderError.message || "database_error");
+        }
+
+        const { error: paymentError } = await supabaseAdmin.from("payments").insert({
+          id: payment.id,
+          order_id: payment.order_id,
+          slip_path: payment.slip_path,
+          slip_sha256: payment.slip_sha256,
+          amount_thb: payment.amount_thb,
+          transferred_at: payment.transferred_at,
+          to_bank: payment.to_bank,
+          payer_name_or_last4: payment.payer_name_or_last4,
+          status: payment.status,
+          reviewed_by: toUuid(payment.reviewed_by),
+          reviewed_at: payment.reviewed_at,
+          created_at: payment.created_at,
+        });
+
+        if (paymentError) {
+          console.error("Supabase createWalkUpOrder insert payment error:", paymentError);
+          throw new Error(paymentError.message || "database_error");
+        }
+
+        if (tickets.length > 0) {
+          const ticketRows = tickets.map((t) => ({
+            id: t.id,
+            order_id: t.order_id,
+            code: t.code,
+            holder_name: t.holder_name,
+            status: t.status,
+            checked_in_at: t.checked_in_at,
+            checked_in_by: toUuid(t.checked_in_by),
+            created_at: t.created_at,
+          }));
+
+          const { error: ticketError } = await supabaseAdmin
+            .from("tickets")
+            .insert(ticketRows);
+
+          if (ticketError) {
+            console.error("Supabase createWalkUpOrder insert tickets error:", ticketError);
+            throw new Error(ticketError.message || "database_error");
+          }
+        }
+
+        await supabaseAdmin.from("audit_log").insert({
+          actor: toUuid(staffId),
+          action: "walkup_ticket_sale",
+          entity: "order",
+          entity_id: order.id,
+          meta: {
+            quantity,
+            total_thb,
+            payment_method: input.payment_method,
+            check_in_now_count: finalCheckInNowCount,
+          },
+          created_at: now,
+        });
+      } catch (err: any) {
+        console.error("Supabase createWalkUpOrder exception:", err);
+        throw err;
+      }
+    }
+
+    this.orders.set(order.id, { ...order });
+    this.payments.set(payment.id, { ...payment });
+    for (const t of tickets) {
+      this.tickets.set(t.id, { ...t });
+    }
+    this.auditLogs.push({
+      id: this.auditLogs.length + 1,
+      actor: staffId,
+      action: "walkup_ticket_sale",
+      entity: "order",
+      entity_id: order.id,
+      meta: {
+        quantity,
+        total_thb,
+        payment_method: input.payment_method,
+        check_in_now_count: finalCheckInNowCount,
+      },
+      created_at: now,
+    });
+
+    return {
+      success: true,
+      order: { ...order },
+      payment: { ...payment },
+      tickets: tickets.map((t) => ({ ...t })),
+    };
+  }
+
   public async getOrderByCode(
     code: string,
     accessToken?: string
@@ -389,6 +617,7 @@ export class OrderEngine {
         if (!data) return null;
 
         const ord = data as Order;
+        if (ord.phone === "0000000000") ord.phone = "-";
         if (accessToken && ord.access_token !== accessToken) {
           return null;
         }
@@ -427,6 +656,7 @@ export class OrderEngine {
         if (!data) return null;
 
         const ord = data as Order;
+        if (ord.phone === "0000000000") ord.phone = "-";
         this.orders.set(ord.id, ord);
         return { ...ord };
       } catch (err) {
@@ -500,7 +730,10 @@ export class OrderEngine {
           console.error("Supabase searchOrders error:", error);
           return [];
         }
-        const list = (data || []) as Order[];
+        const list = ((data || []) as Order[]).map((ord) => ({
+          ...ord,
+          phone: ord.phone === "0000000000" ? "-" : ord.phone,
+        }));
         list.forEach((ord) => this.orders.set(ord.id, ord));
         return list.map((ord) => ({ ...ord }));
       } catch (err) {
@@ -1404,7 +1637,10 @@ export class OrderEngine {
           console.error("Supabase getAllOrders error:", error);
           return [];
         }
-        return (data || []) as Order[];
+        return (data || []).map((o: any) => ({
+          ...o,
+          phone: o.phone === "0000000000" ? "-" : o.phone,
+        })) as Order[];
       } catch (err) {
         console.error("Supabase getAllOrders exception:", err);
         return [];
@@ -1459,18 +1695,33 @@ export class OrderEngine {
     confirmed_revenue_thb: number;
     tickets_issued: number;
     tickets_checked_in: number;
+    onsite_cash_thb: number;
+    onsite_promptpay_thb: number;
+    onsite_tickets_count: number;
   }> {
     if (this.isSupabaseReady()) {
       try {
         const [ordersRes, paymentsRes, ticketsRes] = await Promise.all([
           supabaseAdmin.from("orders").select("id, status"),
-          supabaseAdmin.from("payments").select("amount_thb, status").eq("status", "approved"),
+          supabaseAdmin.from("payments").select("amount_thb, to_bank, status").eq("status", "approved"),
           supabaseAdmin.from("tickets").select("id, status"),
         ]);
 
         const orders = ordersRes.data || [];
         const payments = paymentsRes.data || [];
         const tickets = ticketsRes.data || [];
+
+        const onsiteCashThb = payments
+          .filter((p: any) => p.to_bank === "เงินสดหน้าร้าน")
+          .reduce((sum: number, p: any) => sum + Number(p.amount_thb || 0), 0);
+
+        const onsitePromptpayThb = payments
+          .filter((p: any) => p.to_bank === "พร้อมเพย์หน้าร้าน")
+          .reduce((sum: number, p: any) => sum + Number(p.amount_thb || 0), 0);
+
+        const onsiteTicketsCount = Math.round(
+          (onsiteCashThb + onsitePromptpayThb) / (EVENT.ticketPriceThb || 1)
+        );
 
         return {
           total_orders: orders.length,
@@ -1481,6 +1732,9 @@ export class OrderEngine {
           confirmed_revenue_thb: payments.reduce((sum: number, p: any) => sum + Number(p.amount_thb || 0), 0),
           tickets_issued: tickets.filter((t: any) => t.status === "issued" || t.status === "checked_in").length,
           tickets_checked_in: tickets.filter((t: any) => t.status === "checked_in").length,
+          onsite_cash_thb: onsiteCashThb,
+          onsite_promptpay_thb: onsitePromptpayThb,
+          onsite_tickets_count: onsiteTicketsCount,
         };
       } catch (err) {
         console.error("Supabase getDashboardStats exception:", err);
@@ -1492,6 +1746,8 @@ export class OrderEngine {
     let paidCount = 0;
     let cancelledCount = 0;
     let confirmedRevenue = 0;
+    let onsiteCashThb = 0;
+    let onsitePromptpayThb = 0;
 
     for (const order of this.orders.values()) {
       if (order.status === "pending_payment") pendingPaymentCount++;
@@ -1502,7 +1758,13 @@ export class OrderEngine {
 
     for (const payment of this.payments.values()) {
       if (payment.status === "approved") {
-        confirmedRevenue += Number(payment.amount_thb);
+        const amt = Number(payment.amount_thb || 0);
+        confirmedRevenue += amt;
+        if (payment.to_bank === "เงินสดหน้าร้าน") {
+          onsiteCashThb += amt;
+        } else if (payment.to_bank === "พร้อมเพย์หน้าร้าน") {
+          onsitePromptpayThb += amt;
+        }
       }
     }
 
@@ -1517,6 +1779,10 @@ export class OrderEngine {
       }
     }
 
+    const onsiteTicketsCount = Math.round(
+      (onsiteCashThb + onsitePromptpayThb) / (EVENT.ticketPriceThb || 1)
+    );
+
     return {
       total_orders: this.orders.size,
       pending_payment_count: pendingPaymentCount,
@@ -1526,6 +1792,9 @@ export class OrderEngine {
       confirmed_revenue_thb: confirmedRevenue,
       tickets_issued: ticketsIssued,
       tickets_checked_in: ticketsCheckedIn,
+      onsite_cash_thb: onsiteCashThb,
+      onsite_promptpay_thb: onsitePromptpayThb,
+      onsite_tickets_count: onsiteTicketsCount,
     };
   }
 }

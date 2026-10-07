@@ -33,6 +33,7 @@ export interface Payment {
   status: PaymentStatus;
   reviewed_by: string | null;
   reviewed_at: string | null;
+  approved_at?: string | null;
   reject_reason: string | null;
   slip_url?: string | null;
   created_at: string;

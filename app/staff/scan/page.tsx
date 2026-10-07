@@ -15,6 +15,7 @@ import {
   Flashlight,
   Upload,
   RotateCcw,
+  Zap,
 } from "lucide-react";
 
 interface ScannedResult {
@@ -368,13 +369,23 @@ export default function StaffScanPage() {
             <h1 className="text-lg font-bold text-content">สแกนบัตรเข้างาน</h1>
           </div>
 
-          <Link
-            href="/staff/search"
-            className="px-3 py-1.5 rounded-lg border border-border bg-surface text-content hover:text-brand text-xs font-semibold flex items-center gap-1.5 shadow-sm"
-          >
-            <Search className="w-3.5 h-3.5" />
-            <span>ค้นหาด้วยมือ</span>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/staff/walk-up"
+              className="px-3 py-1.5 rounded-lg border border-brand/30 bg-brand/5 text-brand hover:bg-brand hover:text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors"
+            >
+              <Zap className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
+              <span>ขายบัตร POS</span>
+            </Link>
+
+            <Link
+              href="/staff/search"
+              className="px-3 py-1.5 rounded-lg border border-border bg-surface text-content hover:text-brand text-xs font-semibold flex items-center gap-1.5 shadow-sm"
+            >
+              <Search className="w-3.5 h-3.5" />
+              <span>ค้นหาด้วยมือ</span>
+            </Link>
+          </div>
         </div>
 
         {/* Live Camera Viewfinder Area */}

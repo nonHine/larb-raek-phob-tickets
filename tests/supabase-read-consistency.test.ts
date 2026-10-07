@@ -162,4 +162,62 @@ describe("Supabase-backed reads do not fall back to stale memory", () => {
 
     await expect(engine.getTicketsForOrder("order-1")).rejects.toThrow("database unavailable");
   });
+
+  it("reconciles onsite cash, promptpay, and ticket counts in Supabase mode", async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://project.supabase.co";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-key";
+
+    const ordersQuery = {
+      select: async () => ({
+        data: [
+          { id: "o1", status: "paid" },
+          { id: "o2", status: "under_review" },
+        ],
+        error: null,
+      }),
+    };
+    const paymentSelectQuery = {
+      eq: async () => ({
+        data: [
+          { amount_thb: 98, to_bank: "เงินสดหน้าร้าน", status: "approved" },
+          { amount_thb: 147, to_bank: "พร้อมเพย์หน้าร้าน", status: "approved" },
+          { amount_thb: 196, to_bank: "ธนาคารกสิกรไทย", status: "approved" },
+        ],
+        error: null,
+      }),
+    };
+    const paymentsQuery = {
+      select: vi.fn().mockReturnValue(paymentSelectQuery),
+    };
+    const ticketsQuery = {
+      select: async () => ({
+        data: [
+          { id: "t1", status: "issued" },
+          { id: "t2", status: "checked_in" },
+        ],
+        error: null,
+      }),
+    };
+
+    supabaseMock.from.mockImplementation((table: string) => {
+      if (table === "orders") return ordersQuery;
+      if (table === "payments") return paymentsQuery;
+      if (table === "tickets") return ticketsQuery;
+      return {};
+    });
+
+    const engine = new OrderEngine();
+    const stats = await engine.getDashboardStats();
+
+    expect(paymentsQuery.select).toHaveBeenCalledWith("amount_thb, to_bank, status");
+    expect(stats.total_orders).toBe(2);
+    expect(stats.under_review_count).toBe(1);
+    expect(stats.paid_count).toBe(1);
+    expect(stats.confirmed_revenue_thb).toBe(98 + 147 + 196);
+    expect(stats.onsite_cash_thb).toBe(98);
+    expect(stats.onsite_promptpay_thb).toBe(147);
+    expect(stats.onsite_tickets_count).toBe(5); // (98 + 147) / 49 = 5
+    expect(stats.tickets_issued).toBe(2);
+    expect(stats.tickets_checked_in).toBe(1);
+  });
 });

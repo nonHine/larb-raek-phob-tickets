@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { StaffHeader } from "@/components/admin/StaffHeader";
 import {
   BarChart3,
@@ -11,6 +12,9 @@ import {
   UserCheck,
   Ban,
   Loader2,
+  Banknote,
+  Smartphone,
+  Zap,
 } from "lucide-react";
 
 interface DashboardStats {
@@ -22,6 +26,9 @@ interface DashboardStats {
   confirmed_revenue_thb: number;
   tickets_issued: number;
   tickets_checked_in: number;
+  onsite_cash_thb: number;
+  onsite_promptpay_thb: number;
+  onsite_tickets_count: number;
 }
 
 export default function AdminDashboardPage() {
@@ -141,6 +148,99 @@ export default function AdminDashboardPage() {
                   {stats.confirmed_revenue_thb.toLocaleString()}
                 </span>
                 <span className="text-sm font-semibold opacity-90">บาท</span>
+              </div>
+            </div>
+
+            {/* On-site POS Summary Card */}
+            <div className="col-span-2 p-5 rounded-2xl border-2 border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-surface to-surface shadow-sm flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-2xl">💵</span>
+                  <div>
+                    <h2 className="text-base font-bold text-content flex items-center gap-2">
+                      ยอดขายบัตรหน้างาน (On-site POS)
+                    </h2>
+                    <p className="text-xs text-content-muted">
+                      สรุปยอดขายบัตร Walk-in และจำแนกช่องทางชำระเงิน
+                    </p>
+                  </div>
+                </div>
+
+                <Link
+                  href="/staff/walk-up"
+                  className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-xs shadow-sm transition-all self-start sm:self-auto"
+                >
+                  <Zap className="w-4 h-4 fill-stone-950" />
+                  <span>⚡ ไปหน้าขายบัตร POS (/staff/walk-up)</span>
+                </Link>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                {/* Cash in hand for shift closing */}
+                <div className="p-3.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 flex flex-col gap-1">
+                  <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400">
+                    <span className="text-xs font-semibold flex items-center gap-1.5">
+                      <Banknote className="w-4 h-4" />
+                      เงินสดรับในกระเป๋า
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 font-medium">
+                      ปิดกะ
+                    </span>
+                  </div>
+                  <div className="flex items-baseline gap-1 mt-0.5">
+                    <span className="text-2xl font-extrabold text-content">
+                      {(stats?.onsite_cash_thb || 0).toLocaleString()}
+                    </span>
+                    <span className="text-xs font-bold text-content-muted">฿</span>
+                  </div>
+                  <span className="text-[11px] text-content-muted">
+                    เงินสดรับในกระเป๋า: {stats?.onsite_cash_thb || 0} ฿ (สำหรับสตาฟนับเงินสดปิดกะ)
+                  </span>
+                </div>
+
+                {/* PromptPay on-site */}
+                <div className="p-3.5 rounded-xl border border-blue-500/20 bg-blue-500/5 flex flex-col gap-1">
+                  <div className="flex items-center justify-between text-blue-600 dark:text-blue-400">
+                    <span className="text-xs font-semibold flex items-center gap-1.5">
+                      <Smartphone className="w-4 h-4" />
+                      โอนพร้อมเพย์หน้างาน
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 font-medium">
+                      QR Code
+                    </span>
+                  </div>
+                  <div className="flex items-baseline gap-1 mt-0.5">
+                    <span className="text-2xl font-extrabold text-content">
+                      {(stats?.onsite_promptpay_thb || 0).toLocaleString()}
+                    </span>
+                    <span className="text-xs font-bold text-content-muted">฿</span>
+                  </div>
+                  <span className="text-[11px] text-content-muted">
+                    โอนพร้อมเพย์หน้างาน: {stats?.onsite_promptpay_thb || 0} ฿
+                  </span>
+                </div>
+
+                {/* Total On-site Tickets */}
+                <div className="p-3.5 rounded-xl border border-purple-500/20 bg-purple-500/5 flex flex-col gap-1">
+                  <div className="flex items-center justify-between text-purple-600 dark:text-purple-400">
+                    <span className="text-xs font-semibold flex items-center gap-1.5">
+                      <Ticket className="w-4 h-4" />
+                      รวมบัตรหน้างาน
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/10 font-medium">
+                      Walk-up
+                    </span>
+                  </div>
+                  <div className="flex items-baseline gap-1 mt-0.5">
+                    <span className="text-2xl font-extrabold text-content">
+                      {(stats?.onsite_tickets_count || 0).toLocaleString()}
+                    </span>
+                    <span className="text-xs font-bold text-content-muted">ใบ</span>
+                  </div>
+                  <span className="text-[11px] text-content-muted">
+                    รวมบัตรหน้างาน: {stats?.onsite_tickets_count || 0} ใบ
+                  </span>
+                </div>
               </div>
             </div>
 

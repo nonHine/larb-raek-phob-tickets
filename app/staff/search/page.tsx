@@ -12,6 +12,7 @@ import {
   Loader2,
   User,
   Phone,
+  Zap,
 } from "lucide-react";
 
 interface TicketSearchResult {
@@ -134,9 +135,15 @@ export default function StaffSearchPage() {
             <span>กลับหน้าสแกนกล้อง</span>
           </Link>
 
-          <span className="text-xs font-semibold text-content-muted">
-            ค้นหาบัตรด้วยตนเอง
-          </span>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/staff/walk-up"
+              className="px-3 py-1.5 rounded-lg border border-brand/30 bg-brand/5 text-brand hover:bg-brand hover:text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors"
+            >
+              <Zap className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
+              <span>ขายบัตร POS</span>
+            </Link>
+          </div>
         </div>
 
         <form onSubmit={handleSearch} className="flex gap-2">
