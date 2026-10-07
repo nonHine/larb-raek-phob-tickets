@@ -150,6 +150,11 @@ export async function GET() {
         }
       }
 
+      // Fetch AI analyses for all pending payments in 1 query
+      const aiAnalysesMap = await engine.getAiAnalyses(
+        pendingPayments.map((p) => p.id)
+      );
+
       // Assemble allPayments
       const allPayments: any[] = [];
       for (const p of pendingPayments) {
@@ -196,7 +201,7 @@ export async function GET() {
             created_at: order.created_at,
           },
           duplicates: duplicateMatches,
-          ai_analysis: engine.getAiAnalysis(p.id),
+          ai_analysis: aiAnalysesMap.get(p.id) || engine.getAiAnalysis(p.id) || null,
         });
       }
 
@@ -215,6 +220,9 @@ export async function GET() {
 
     // Fallback for in-memory / unit-test mode
     const pendingPayments = await engine.getPendingPayments();
+    const aiAnalysesMap = await engine.getAiAnalyses(
+      pendingPayments.map((p) => p.id)
+    );
     const allPayments: any[] = [];
 
     for (const p of pendingPayments) {
@@ -258,7 +266,7 @@ export async function GET() {
           created_at: order.created_at,
         },
         duplicates: duplicateMatches,
-        ai_analysis: engine.getAiAnalysis(p.id),
+        ai_analysis: aiAnalysesMap.get(p.id) || engine.getAiAnalysis(p.id) || null,
       });
     }
 

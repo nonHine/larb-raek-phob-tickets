@@ -240,13 +240,14 @@ export async function POST(
           mimeType: sniffed.mime,
           expectedAmount: order.total_thb,
           targetPromptPay: process.env.PROMPTPAY_ID || "0812345678",
+          orderCreatedAt: order.created_at,
         });
-        engine.recordAiAnalysis(payment.id, verification);
+        await engine.recordAiAnalysis(payment.id, verification);
       } catch (aiErr) {
         console.error("AI Slip verification failed:", aiErr);
       }
 
-      const aiSettings = engine.getAiSettings();
+      const aiSettings = await engine.getAiSettings();
       let autoApproved = false;
 
       // Auto-approve if enabled and AI analysis is positive & confident

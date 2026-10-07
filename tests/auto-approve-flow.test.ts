@@ -10,24 +10,25 @@ describe("AI Auto-Approve Flow & Engine Integration", () => {
     setMockSlipVerifier(null);
   });
 
-  it("can toggle AI auto-approve settings on and off", () => {
-    expect(engine.getAiSettings().autoApprove).toBe(true);
+  it("can toggle AI auto-approve settings on and off", async () => {
+    // Default is off for safety
+    expect((await engine.getAiSettings()).autoApprove).toBe(false);
 
-    engine.setAiSettings({ autoApprove: false });
-    expect(engine.getAiSettings().autoApprove).toBe(false);
+    await engine.setAiSettings({ autoApprove: true });
+    expect((await engine.getAiSettings()).autoApprove).toBe(true);
 
-    engine.setAiSettings({ autoApprove: true });
-    expect(engine.getAiSettings().autoApprove).toBe(true);
+    await engine.setAiSettings({ autoApprove: false });
+    expect((await engine.getAiSettings()).autoApprove).toBe(false);
   });
 
-  it("records and retrieves AI analysis by payment id", () => {
+  it("records and retrieves AI analysis by payment id", async () => {
     const paymentId = "test-payment-id";
     const analysis = {
       isAutoApprovable: true,
       summaryText: "Valid slip",
     };
 
-    engine.recordAiAnalysis(paymentId, analysis);
+    await engine.recordAiAnalysis(paymentId, analysis);
     expect(engine.getAiAnalysis(paymentId)).toEqual(analysis);
     expect(engine.getAiAnalysis("unknown-id")).toBeNull();
   });

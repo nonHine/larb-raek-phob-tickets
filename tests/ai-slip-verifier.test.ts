@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import {
   checkReceiverMatch,
+  checkTransferTime,
   verifySlipWithAI,
   setMockSlipVerifier,
 } from "@/lib/ai-slip-verifier";
@@ -30,6 +31,37 @@ describe("AI Slip Verifier - Receiver Matching", () => {
     expect(checkReceiverMatch("0987654321")).toBe(false);
     expect(checkReceiverMatch(null)).toBe(false);
     expect(checkReceiverMatch("")).toBe(false);
+  });
+});
+
+describe("AI Slip Verifier - Transfer Time Validation", () => {
+  const baseOrderTime = "2026-10-07T12:00:00.000Z";
+  const now = new Date("2026-10-07T12:30:00.000Z");
+
+  it("accepts transfer made after order creation and before now", () => {
+    const validTransfer = "2026-10-07T12:05:00.000Z";
+    expect(checkTransferTime(validTransfer, baseOrderTime, now)).toBe(true);
+  });
+
+  it("accepts transfer made slightly before order within 10 min grace window", () => {
+    const graceTransfer = "2026-10-07T11:55:00.000Z";
+    expect(checkTransferTime(graceTransfer, baseOrderTime, now)).toBe(true);
+  });
+
+  it("rejects transfer made significantly earlier than order creation", () => {
+    const oldTransfer = "2026-10-07T10:00:00.000Z";
+    expect(checkTransferTime(oldTransfer, baseOrderTime, now)).toBe(false);
+  });
+
+  it("rejects transfer far in the future", () => {
+    const futureTransfer = "2026-10-07T15:00:00.000Z";
+    expect(checkTransferTime(futureTransfer, baseOrderTime, now)).toBe(false);
+  });
+
+  it("rejects invalid or null dates", () => {
+    expect(checkTransferTime(null, baseOrderTime, now)).toBe(false);
+    expect(checkTransferTime("invalid-date", baseOrderTime, now)).toBe(false);
+    expect(checkTransferTime("2026-10-07T12:05:00.000Z", null, now)).toBe(false);
   });
 });
 

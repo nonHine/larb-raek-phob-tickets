@@ -31,7 +31,28 @@ export function setMockSlipVerifier(
 }
 
 /**
- * Checks if the detected receiver text matches any known event account identifiers
+ * Names that may appear as the receiver on a genuine slip. Thai bank slips
+ * usually mask the receiver's number, so the first name is often the only
+ * usable signal. Override with AI_RECEIVER_NAMES="ชื่อ1,name2".
+ */
+function getReceiverNames(): string[] {
+  const fromEnv = (process.env.AI_RECEIVER_NAMES || "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter((s) => s.length >= 3);
+  if (fromEnv.length > 0) return fromEnv;
+  // Default: configured bank account holder names, romanizations, and event venue keywords
+  const names: string[] = [];
+  for (const b of EVENT.banks) {
+    const parts = b.accountName.trim().split(/\s+/).map((s) => s.toLowerCase());
+    names.push(...parts.filter((p) => p.length >= 3));
+  }
+  return [...names, "hatsanan", "taosing", "ร้านลาบก้อยซอยนานา", "ลาบแรกพบ"];
+}
+
+/**
+ * Checks if the detected receiver text matches the event's receiving account.
+ * Deliberately strict: a false "match" can lead to an automatic approval.
  */
 export function checkReceiverMatch(
   receiverText: string | null,
@@ -40,40 +61,37 @@ export function checkReceiverMatch(
   if (!receiverText) return false;
   const clean = receiverText.replace(/[\s-]/g, "").toLowerCase();
 
-  // 1. Check promptpay ID
+  // 1. Full PromptPay ID (unmasked)
   const cleanPromptPay = targetPromptPay.replace(/[\s-]/g, "").toLowerCase();
-  if (clean.includes(cleanPromptPay)) return true;
+  if (cleanPromptPay.length >= 10 && clean.includes(cleanPromptPay)) return true;
 
-  // 2. Check bank account numbers from EVENT config
+  // 2. Bank account number (full or masked last 5-6 digits e.g. xxx-x-47161-8)
   for (const b of EVENT.banks) {
     const cleanAcc = b.accountNo.replace(/[\s-]/g, "");
-    if (clean.includes(cleanAcc)) return true;
-    // Check last 4-6 digits of account
-    if (cleanAcc.length >= 4 && clean.includes(cleanAcc.slice(-5))) return true;
-
-    // Check account holder name keywords
-    const nameKeywords = b.accountName.split(/\s+/).filter(Boolean);
-    for (const kw of nameKeywords) {
-      if (kw.length >= 3 && receiverText.includes(kw)) return true;
-    }
+    if (cleanAcc.length >= 10 && clean.includes(cleanAcc)) return true;
+    if (cleanAcc.length >= 5 && clean.includes(cleanAcc.slice(-5))) return true;
   }
 
-  // 3. Check event name and account holder keywords (Thai and English)
+  // 3. Receiver name or event identity
   const lower = receiverText.toLowerCase();
-  const knownKeywords = [
-    "ผู้จัดงาน",
-    "ทางการ",
-    "ลาบ",
-    "hatsanan",
-    "taosing",
-    "nonhi",
-    "larb",
-  ];
-  for (const kw of knownKeywords) {
-    if (lower.includes(kw)) return true;
-  }
+  return getReceiverNames().some((name) => lower.includes(name));
+}
 
-  return false;
+/**
+ * The transfer must happen after the order was created (with a small grace
+ * window for clock skew) and not in the future.
+ */
+export function checkTransferTime(
+  transferredAt: string | null,
+  orderCreatedAt: string | null | undefined,
+  now: Date = new Date()
+): boolean {
+  if (!transferredAt || !orderCreatedAt) return false;
+  const t = new Date(transferredAt).getTime();
+  const created = new Date(orderCreatedAt).getTime();
+  if (isNaN(t) || isNaN(created)) return false;
+  const GRACE_MS = 10 * 60 * 1000;
+  return t >= created - GRACE_MS && t <= now.getTime() + GRACE_MS;
 }
 
 /**
@@ -84,8 +102,9 @@ export async function verifySlipWithAI(params: {
   mimeType: string;
   expectedAmount: number;
   targetPromptPay?: string;
+  orderCreatedAt?: string | null;
 }): Promise<VerificationResult> {
-  const { buffer, mimeType, expectedAmount, targetPromptPay } = params;
+  const { buffer, mimeType, expectedAmount, targetPromptPay, orderCreatedAt } = params;
 
   // If a mock verifier is configured (e.g. during automated testing), use it
   if (mockVerifier) {
@@ -126,8 +145,8 @@ Extract the following details as strictly JSON with no markdown wrapping:
   "isValidSlip": true or false (is this a genuine Thai bank transfer slip),
   "bankName": "Bank name (e.g. KBANK, SCB, KTB, BBL, TTB, GSB, PromptPay) or null",
   "senderName": "Name of sender or null",
-  "receiverAccountOrName": "Name or Account No or PromptPay number of receiver or null",
-  "transferredAt": "ISO date string or datetime text on slip or null",
+  "receiverAccountOrName": "Receiver name and account/PromptPay number exactly as printed (may be masked, e.g. xxx-x-x5085) or null",
+  "transferredAt": "Transfer date-time as ISO 8601 with +07:00 offset, Gregorian year (convert Buddhist year: subtract 543, e.g. 7 ต.ค. 69 -> 2026-10-07) or null",
   "amountThb": numeric transfer amount in THB (e.g. 49.00 or 98.00) or null,
   "transactionRef": "Bank transaction reference number or null",
   "confidenceScore": confidence number from 0.0 to 1.0,
@@ -135,7 +154,7 @@ Extract the following details as strictly JSON with no markdown wrapping:
 }
 `;
 
-    const modelName = process.env.GEMINI_MODEL || "gemini-1.5-flash";
+    const modelName = process.env.GEMINI_MODEL || "gemini-3.8-flash";
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
     const res = await fetch(endpoint, {
@@ -164,7 +183,7 @@ Extract the following details as strictly JSON with no markdown wrapping:
 
     if (!res.ok) {
       const errBody = await res.text();
-      console.error(`Gemini API error (${res.status}):`, errBody);
+      console.error(`Gemini API error (${res.status}) model=${modelName}:`, errBody);
       return {
         analysis: {
           isValidSlip: true,
@@ -175,22 +194,23 @@ Extract the following details as strictly JSON with no markdown wrapping:
           amountThb: null,
           transactionRef: null,
           confidenceScore: 0,
-          reason: `Gemini API HTTP ${res.status}`,
+          reason: `Gemini API HTTP ${res.status} (model ${modelName})`,
         },
         isMatchingAmount: false,
         isMatchingReceiver: false,
         isAutoApprovable: false,
-        summaryText: `เกิดข้อผิดพลาดในการเชื่อมต่อ Gemini API (${res.status})`,
+        summaryText: `เกิดข้อผิดพลาดในการเชื่อมต่อ Gemini API (${res.status}) — รอตรวจด้วยมือ`,
       };
     }
 
     const jsonRes = await res.json();
+    const parts: any[] = jsonRes.candidates?.[0]?.content?.parts || [];
     const candidateText =
-      jsonRes.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+      parts.map((p) => (typeof p?.text === "string" ? p.text : "")).join("").trim() || "{}";
 
     let parsed: any = {};
     try {
-      parsed = JSON.parse(candidateText.trim());
+      parsed = JSON.parse(candidateText);
     } catch {
       // Fallback regex extract JSON block
       const match = candidateText.match(/\{[\s\S]*\}/);
@@ -200,23 +220,27 @@ Extract the following details as strictly JSON with no markdown wrapping:
     const detectedAmount = typeof parsed.amountThb === "number" ? parsed.amountThb : Number(parsed.amountThb) || null;
     const isMatchingAmount = detectedAmount !== null && Math.abs(detectedAmount - expectedAmount) < 0.01;
     const isMatchingReceiver = checkReceiverMatch(parsed.receiverAccountOrName, targetPromptPay);
-    const isValidSlip = Boolean(parsed.isValidSlip);
-    const confidence = typeof parsed.confidenceScore === "number" ? parsed.confidenceScore : 0.8;
+    const isMatchingTime = checkTransferTime(parsed.transferredAt || null, orderCreatedAt);
+    const isValidSlip = parsed.isValidSlip === true;
+    // Missing confidence means "unknown", never "confident".
+    const confidence = typeof parsed.confidenceScore === "number" ? parsed.confidenceScore : 0;
 
     const isAutoApprovable =
       isValidSlip &&
       isMatchingAmount &&
       isMatchingReceiver &&
+      isMatchingTime &&
       confidence >= 0.8;
 
     let summaryText = "";
     if (isAutoApprovable) {
-      summaryText = `AI ตรวจสอบผ่านสมบูรณ์ (ยอด ${detectedAmount} ฿ ตรงเป๊ะ, ผู้รับตรง, มั่นใจ ${Math.round(confidence * 100)}%)`;
+      summaryText = `AI ตรวจสอบผ่าน (ยอด ${detectedAmount} ฿ ตรง, ผู้รับตรง, เวลาโอนสมเหตุสมผล, มั่นใจ ${Math.round(confidence * 100)}%)`;
     } else {
       const issues: string[] = [];
       if (!isValidSlip) issues.push("ไม่ใช่ภาพสลิปที่ถูกต้อง");
       if (!isMatchingAmount) issues.push(`ยอดไม่ตรง (ตรวจพบ ${detectedAmount ?? "N/A"} ฿ แต่ยอดที่ต้องชำระคือ ${expectedAmount} ฿)`);
       if (!isMatchingReceiver) issues.push(`บัญชีผู้รับไม่ตรงกับบัญชีงาน (${parsed.receiverAccountOrName || "ไม่พบ"})`);
+      if (!isMatchingTime) issues.push(`เวลาโอนไม่สอดคล้องกับเวลาสั่งซื้อ (${parsed.transferredAt || "ไม่พบเวลา"})`);
       if (confidence < 0.8) issues.push("ความมั่นใจต่ำ");
       summaryText = `AI แนะนำให้ตรวจสอบด้วยมือ: ${issues.join(", ")}`;
     }

@@ -45,7 +45,7 @@ export class OrderEngine {
   public payments: Map<string, Payment> = new Map();
   public tickets: Map<string, Ticket> = new Map();
   public auditLogs: AuditLog[] = [];
-  public aiAutoApproveEnabled: boolean = true;
+  public aiAutoApproveEnabled: boolean = false;
   public aiAnalyses: Map<string, any> = new Map();
   public venueStatus: VenueStatus = {
     id: 1,
@@ -87,7 +87,7 @@ export class OrderEngine {
     this.tickets.clear();
     this.auditLogs = [];
     this.aiAnalyses.clear();
-    this.aiAutoApproveEnabled = true;
+    this.aiAutoApproveEnabled = false;
     this.venueStatus = {
       id: 1,
       is_full: false,
@@ -97,17 +97,105 @@ export class OrderEngine {
   }
 
   // --- AI Verification Settings & Cache ---
-  public getAiSettings(): { autoApprove: boolean } {
+  // Persisted in audit_log (meta jsonb) so every serverless instance sees the
+  // same value. Default is OFF: auto-approval must be an explicit admin choice.
+  public async getAiSettings(): Promise<{ autoApprove: boolean }> {
+    if (this.isSupabaseReady()) {
+      try {
+        const { data, error } = await supabaseAdmin
+          .from("audit_log")
+          .select("meta, created_at")
+          .eq("action", "ai_settings_update")
+          .order("created_at", { ascending: false })
+          .limit(1);
+        if (error) {
+          console.error("getAiSettings error, failing closed (OFF):", error);
+          return { autoApprove: false };
+        }
+        const latest = data?.[0]?.meta as { autoApprove?: unknown } | undefined;
+        this.aiAutoApproveEnabled = latest?.autoApprove === true;
+        return { autoApprove: this.aiAutoApproveEnabled };
+      } catch (err) {
+        console.error("getAiSettings exception, failing closed (OFF):", err);
+        return { autoApprove: false };
+      }
+    }
     return { autoApprove: this.aiAutoApproveEnabled };
   }
 
-  public setAiSettings(settings: { autoApprove: boolean }): { autoApprove: boolean } {
-    this.aiAutoApproveEnabled = Boolean(settings.autoApprove);
-    return { autoApprove: this.aiAutoApproveEnabled };
+  public async setAiSettings(
+    settings: { autoApprove: boolean },
+    staffId?: string
+  ): Promise<{ autoApprove: boolean }> {
+    const value = settings.autoApprove === true;
+    if (this.isSupabaseReady()) {
+      const { error } = await supabaseAdmin.from("audit_log").insert({
+        actor: toUuid(staffId || "staff-admin"),
+        action: "ai_settings_update",
+        entity: "settings",
+        entity_id: null,
+        meta: { autoApprove: value },
+        created_at: new Date().toISOString(),
+      });
+      if (error) {
+        console.error("setAiSettings error:", error);
+        throw new Error("Failed to save AI settings");
+      }
+    }
+    this.aiAutoApproveEnabled = value;
+    return { autoApprove: value };
   }
 
-  public recordAiAnalysis(paymentId: string, analysis: any): void {
+  public async recordAiAnalysis(paymentId: string, analysis: any): Promise<void> {
     this.aiAnalyses.set(paymentId, analysis);
+    if (this.isSupabaseReady()) {
+      try {
+        // Drop raw model text to keep the log small.
+        const slim = analysis
+          ? { ...analysis, analysis: { ...(analysis.analysis || {}), rawText: undefined } }
+          : analysis;
+        const { error } = await supabaseAdmin.from("audit_log").insert({
+          actor: null,
+          action: "ai_slip_analysis",
+          entity: "payment",
+          entity_id: paymentId,
+          meta: slim,
+          created_at: new Date().toISOString(),
+        });
+        if (error) console.error("recordAiAnalysis error:", error);
+      } catch (err) {
+        console.error("recordAiAnalysis exception:", err);
+      }
+    }
+  }
+
+  public async getAiAnalyses(paymentIds: string[]): Promise<Map<string, any>> {
+    const result = new Map<string, any>();
+    if (paymentIds.length === 0) return result;
+    if (this.isSupabaseReady()) {
+      try {
+        const { data, error } = await supabaseAdmin
+          .from("audit_log")
+          .select("entity_id, meta, created_at")
+          .eq("action", "ai_slip_analysis")
+          .in("entity_id", paymentIds)
+          .order("created_at", { ascending: true });
+        if (!error && data) {
+          for (const row of data) {
+            if (row.entity_id) result.set(row.entity_id, row.meta);
+          }
+          return result;
+        }
+        if (error) console.error("getAiAnalyses error:", error);
+      } catch (err) {
+        console.error("getAiAnalyses exception:", err);
+      }
+    }
+    for (const id of paymentIds) {
+      const a = this.aiAnalyses.get(id);
+      if (a) result.set(id, a);
+    }
+    return result;
   }
 
   public getAiAnalysis(paymentId: string): any | null {
