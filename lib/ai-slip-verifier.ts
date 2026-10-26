@@ -49,10 +49,6 @@ function getReceiverNames(): string[] {
   }
   return [
     ...names,
-    "ผู้จัดงาน",
-    "ทางการ",
-    "ramnarongchai",
-    "jantapha",
     "ร้านลาบก้อยซอยนานา",
     "ลาบแรกพบ",
   ];
@@ -64,7 +60,7 @@ function getReceiverNames(): string[] {
  */
 export function checkReceiverMatch(
   receiverText: string | null,
-  targetPromptPay: string = process.env.PROMPTPAY_ID || EVENT.promptPay?.id || "081-234-5678"
+  targetPromptPay: string = process.env.PROMPTPAY_ID || EVENT.promptPay?.id || "0812345678"
 ): boolean {
   if (!receiverText) return false;
   const clean = receiverText.replace(/[\s-]/g, "").toLowerCase();
@@ -86,7 +82,7 @@ export function checkReceiverMatch(
   const qrRef = EVENT.promptPay?.qrReference?.replace(/[\s-]/g, "").toLowerCase();
   if (qrRef && qrRef.length >= 8 && clean.includes(qrRef)) return true;
 
-  // 3. Bank account number (full or masked last 5-6 digits e.g. xxx-x-54785 or xxx-x-xxxxx-x)
+  // 3. Bank account number (full or masked digits)
   for (const b of EVENT.banks) {
     const cleanAcc = b.accountNo.replace(/[\s-]/g, "");
     const rawAcc = b.rawAccountNo ? b.rawAccountNo.replace(/[\s-]/g, "") : cleanAcc;

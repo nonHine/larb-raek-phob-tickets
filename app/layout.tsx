@@ -8,11 +8,13 @@ const notoSansThai = Noto_Sans_Thai({
   weight: ["300", "400", "500", "600", "700"],
   variable: "--font-noto-sans-thai",
   display: "swap",
+  preload: true,
+  adjustFontFallback: true,
 });
 
 export const metadata: Metadata = {
-  title: `ระบบปิดให้บริการแล้ว | ${EVENT.name}`,
-  description: `ระบบปิดให้บริการแล้ว - ${EVENT.name} สิ้นสุดลงเรียบร้อยแล้ว`,
+  title: `${EVENT.name} | ระบบจำหน่ายบัตรและตรวจสอบสลิปโอนเงิน`,
+  description: `ระบบจำหน่ายบัตรและตรวจสอบสลิป — ${EVENT.name} ณ ${EVENT.venue} ราคา ${EVENT.ticketPriceThb} บาท`,
 };
 
 export const viewport: Viewport = {
@@ -28,7 +30,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="th" className={notoSansThai.variable}>
+    <html lang="th" className={`${notoSansThai.variable} font-sans`}>
       <body className="min-h-screen bg-surface-subtle text-content antialiased flex flex-col items-center">
         <main className="w-full max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl min-h-screen bg-surface flex flex-col shadow-sm sm:border-x sm:border-border transition-all">
           {children}

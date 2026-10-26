@@ -14,12 +14,12 @@ export interface PromptPayConfig {
 export interface EventConfig {
   name: string;
   venue: string;
-  startsAt: string | null; // TODO(owner): date/time shown on the site, e.g. "12 ต.ค. 2026 เวลา 18:00 น."
-  doorsOpenAt: string | null; // TODO(owner): doors open time
+  startsAt: string | null;
+  doorsOpenAt: string | null;
   orderCodePrefix: string;
   ticketPriceThb: number;
-  maxTicketsPerOrder: number; // technical sanity ceiling only
-  orderExpiryMinutes: number; // display-only countdown shown to buyers
+  maxTicketsPerOrder: number;
+  orderExpiryMinutes: number;
   promptPay?: PromptPayConfig;
   banks: BankAccount[];
   branding: {
@@ -40,16 +40,16 @@ export const EVENT: EventConfig = {
   maxTicketsPerOrder: 100,
   orderExpiryMinutes: 30,
   promptPay: {
-    id: "081-234-5678",
-    name: "บัญชีทางการ งานลาบแรกพบ",
-    qrReference: "000000000000000",
+    id: process.env.NEXT_PUBLIC_PROMPTPAY_ID || process.env.PROMPTPAY_ID || "081-234-5678",
+    name: process.env.NEXT_PUBLIC_RECEIVER_NAME || "บัญชีทางการ งานลาบแรกพบ",
+    qrReference: process.env.NEXT_PUBLIC_QR_REFERENCE || "000000000000000",
   },
   banks: [
     {
       bank: "ธนาคารกสิกรไทย",
-      accountName: "บัญชีทางการ งานลาบแรกพบ",
-      accountNo: "xxx-x-xxxxx-x",
-      rawAccountNo: "xxxxxxxxx",
+      accountName: process.env.NEXT_PUBLIC_RECEIVER_NAME || "บัญชีทางการ งานลาบแรกพบ",
+      accountNo: process.env.NEXT_PUBLIC_BANK_ACCOUNT_NO || "xxx-x-xxxxx-x",
+      rawAccountNo: process.env.NEXT_PUBLIC_BANK_RAW_NO || "xxxxxxxxx",
     },
   ],
   branding: {

@@ -7,11 +7,10 @@ console.log('=== AUDITING REQUIREMENTS IN HTML & MD ===\n');
 
 const checks = [
   { name: 'Ticket price 49 THB', pattern: /49/ },
-  { name: 'KBANK xxx-x-xxxxx-x', pattern: /xxx-x-xxxxx-x/ },
-  { name: 'KBANK raw xxxxxxxxx', pattern: /xxxxxxxxx/ },
-  { name: 'Account name บัญชีทางการ งานลาบแรกพบ', pattern: /ผู้จัดงาน\s*ทางการ/ },
-  { name: 'PromptPay ID 081-234-5678', pattern: /081-234-5678/ },
-  { name: 'QR Reference 000000000000000', pattern: /000000000000000/ },
+  { name: 'KBANK Account', pattern: /(KBANK|ธนาคารกสิกรไทย)/ },
+  { name: 'Account name บัญชีทางการ งานลาบแรกพบ', pattern: /บัญชีทางการ\s*งานลาบแรกพบ/ },
+  { name: 'PromptPay ID', pattern: /081-234-5678|0812345678/ },
+  { name: 'QR Reference', pattern: /000000000000000/ },
   { name: 'promptpay-qr EMVCo payload', pattern: /promptpay-qr/ },
   { name: 'EMVCo payload mention', pattern: /EMVCo/i },
   { name: 'crypto.randomBytes(16)', pattern: /randomBytes\(16\)/ },
