@@ -41,7 +41,7 @@
 ---
 
 ## 4. Deploy ขึ้น Vercel (Production Launch)
-- [x] เชื่อมต่อ Git Repository กับ [Vercel](https://vercel.com) (nonHine/larb-raek-phob-tickets)
+- [x] เชื่อมต่อ Git Repository กับ [Vercel](https://vercel.com) (larb-raek-phob-tickets)
 - [x] นำค่า Environment Variables จาก `.env.local` ไปใส่ใน Vercel Dashboard ครบทั้ง 9 ตัวแปร:
   - `NEXT_PUBLIC_SUPABASE_URL`
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
