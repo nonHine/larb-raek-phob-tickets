@@ -1,0 +1,3602 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>สไลด์นำเสนอ: ระบบจำหน่ายบัตรและเช็คอินอัตโนมัติ — งานลาบแรกพบ</title>
+  
+  <!-- Google Fonts: Noto Sans Thai & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <style>
+    /* ==========================================================================
+       1. CSS VARIABLES & RESET (Laab Neon Nightlife Design System - DESIGN.md)
+       ========================================================================== */
+    :root {
+      --canvas-bg: #0D0E12;
+      --surface-1: #161922;
+      --surface-2: #202532;
+      --surface-hover: #2A3042;
+      --border-hairline: #2D3345;
+      --border-accent: rgba(245, 158, 11, 0.35);
+      
+      --brand-red: #8F1D2D;
+      --brand-red-hover: #741725;
+      --brand-red-glow: rgba(143, 29, 45, 0.4);
+      
+      --neon-gold: #F59E0B;
+      --neon-gold-hover: #D97706;
+      --neon-gold-glow: rgba(245, 158, 11, 0.25);
+      --text-highlight: #FBBF24;
+      
+      --text-heading: #F9FAFB;
+      --text-body: #D1D5DB;
+      --text-muted: #9CA3AF;
+      
+      --status-success: #10B981;
+      --status-success-bg: rgba(16, 185, 129, 0.12);
+      --status-warning: #F59E0B;
+      --status-warning-bg: rgba(245, 158, 11, 0.12);
+      --status-danger: #EF4444;
+      --status-danger-bg: rgba(239, 68, 68, 0.12);
+      
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 22px;
+      --radius-pill: 9999px;
+      
+      --shadow-card: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+      --shadow-neon: 0 0 25px rgba(245, 158, 11, 0.2);
+      --shadow-red: 0 0 25px rgba(143, 29, 45, 0.35);
+
+      --font-thai: 'Noto Sans Thai', 'Leelawadee UI', 'Sarabun', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* Custom Dark Scrollbars */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--surface-1);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-hairline);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--neon-gold);
+    }
+
+    body {
+      background-color: var(--canvas-bg);
+      color: var(--text-body);
+      font-family: var(--font-thai);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      background-image: 
+        radial-gradient(circle at 12% 15%, rgba(143, 29, 45, 0.18) 0%, transparent 40%),
+        radial-gradient(circle at 88% 85%, rgba(245, 158, 11, 0.12) 0%, transparent 45%),
+        radial-gradient(circle at 50% 50%, rgba(22, 25, 34, 0.85) 0%, transparent 100%);
+      background-attachment: fixed;
+      user-select: none;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ==========================================================================
+       2. TOP NAVIGATION & PROGRESS BAR
+       ========================================================================== */
+    .top-progress-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      z-index: 100;
+    }
+    .top-progress-bar {
+      height: 100%;
+      width: 7.14%;
+      background: linear-gradient(90deg, var(--brand-red), var(--neon-gold));
+      box-shadow: 0 0 10px var(--neon-gold);
+      transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    header.presentation-header {
+      position: fixed;
+      top: 4px;
+      left: 0;
+      width: 100%;
+      height: 56px;
+      background: rgba(13, 14, 18, 0.92);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border-hairline);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      z-index: 90;
+    }
+
+    .brand-cluster {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-logo-pill {
+      background: linear-gradient(135deg, var(--brand-red), #5a111b);
+      color: #fff;
+      padding: 4px 12px;
+      border-radius: var(--radius-pill);
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      box-shadow: 0 0 12px var(--brand-red-glow);
+    }
+    .brand-title {
+      color: var(--text-heading);
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: -0.2px;
+    }
+    .brand-subtitle-tag {
+      color: var(--text-muted);
+      font-size: 12px;
+      border-left: 1px solid var(--border-hairline);
+      padding-left: 12px;
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .slide-counter-chip {
+      background: var(--surface-2);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-pill);
+      padding: 4px 14px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--neon-gold);
+      letter-spacing: 0.5px;
+    }
+
+    .ctrl-btn {
+      background: var(--surface-1);
+      border: 1px solid var(--border-hairline);
+      color: var(--text-body);
+      border-radius: var(--radius-sm);
+      padding: 6px 12px;
+      font-size: 13px;
+      font-family: var(--font-thai);
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      outline: none;
+    }
+    .ctrl-btn:hover {
+      background: var(--surface-hover);
+      color: var(--text-heading);
+      border-color: var(--neon-gold);
+    }
+    .ctrl-btn.active {
+      background: rgba(245, 158, 11, 0.15);
+      border-color: var(--neon-gold);
+      color: var(--neon-gold);
+    }
+
+    /* ==========================================================================
+       3. PRESENTATION STAGE & SLIDE STRUCTURE
+       ========================================================================== */
+    main.presentation-stage {
+      flex: 1;
+      margin-top: 60px;
+      margin-bottom: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px 20px;
+      width: 100%;
+      position: relative;
+    }
+
+    .slide-viewport {
+      width: 100%;
+      max-width: 1200px;
+      background: var(--surface-1);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-card);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .slide-viewport::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--brand-red), var(--neon-gold), transparent);
+      opacity: 0.8;
+      z-index: 10;
+    }
+
+    .slide-content-wrap {
+      flex: 1;
+      padding: 30px 40px;
+      display: none;
+      flex-direction: column;
+      overflow-y: auto;
+      max-height: calc(100vh - 160px);
+    }
+    .slide-content-wrap.active {
+      display: flex;
+      animation: slideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.995);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+    @keyframes laserScan {
+      0%, 100% {
+        top: 0;
+        opacity: 0.85;
+      }
+      50% {
+        top: calc(100% - 2px);
+        opacity: 1;
+      }
+    }
+
+    /* ==========================================================================
+       4. TYPOGRAPHY & HEADER IN SLIDES
+       ========================================================================== */
+    .slide-tag-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--surface-2);
+      border: 1px solid var(--border-hairline);
+      color: var(--neon-gold);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: var(--radius-pill);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 10px;
+      align-self: flex-start;
+    }
+    .slide-title {
+      font-size: 25px;
+      font-weight: 800;
+      color: var(--text-heading);
+      line-height: 1.3;
+      margin-bottom: 6px;
+      letter-spacing: -0.4px;
+    }
+    .slide-title .highlight {
+      color: var(--text-highlight);
+      text-shadow: 0 0 16px rgba(245, 158, 11, 0.3);
+    }
+    .slide-subtitle {
+      font-size: 14.5px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 18px;
+    }
+
+    /* ==========================================================================
+       5. WORKFLOW STEP BANNERS & GRIDS
+       ========================================================================== */
+    .workflow-strip {
+      display: flex;
+      align-items: center;
+      background: rgba(13, 14, 18, 0.7);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+      margin-bottom: 18px;
+      gap: 8px;
+      overflow-x: auto;
+    }
+    .workflow-step {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface-2);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-sm);
+      padding: 6px 12px;
+      flex-shrink: 0;
+    }
+    .workflow-step.active {
+      border-color: var(--neon-gold);
+      background: rgba(245, 158, 11, 0.12);
+    }
+    .workflow-num {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--neon-gold);
+      color: #000;
+      font-weight: 800;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .workflow-text h6 {
+      color: var(--text-heading);
+      font-size: 12.5px;
+      font-weight: 700;
+    }
+    .workflow-text span {
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+    .workflow-arrow {
+      color: var(--neon-gold);
+      font-size: 14px;
+      font-weight: 700;
+      flex-shrink: 0;
+      padding: 0 4px;
+    }
+
+    .grid-2col {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 22px;
+      flex: 1;
+      align-items: stretch;
+    }
+    .grid-2col.equal {
+      grid-template-columns: 1fr 1fr;
+    }
+    .grid-3col {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    .grid-4col {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+    .grid-6bento {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(2, auto);
+      gap: 16px;
+    }
+
+    .card-box {
+      background: var(--surface-2);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-lg);
+      padding: 18px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      transition: all 0.25s ease;
+    }
+    .card-box:hover {
+      border-color: rgba(245, 158, 11, 0.35);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.4);
+    }
+    .card-box.highlight-glow {
+      border-color: rgba(143, 29, 45, 0.6);
+      box-shadow: 0 0 25px rgba(143, 29, 45, 0.2);
+    }
+
+    .step-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .step-item {
+      display: flex;
+      gap: 12px;
+      background: rgba(13, 14, 18, 0.5);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+    }
+    .step-num-badge {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--brand-red), #5c121d);
+      color: #fff;
+      font-weight: 700;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 0 10px var(--brand-red-glow);
+    }
+    .step-content h4 {
+      color: var(--text-heading);
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+    .step-content p {
+      color: var(--text-body);
+      font-size: 12.8px;
+      line-height: 1.5;
+    }
+
+    /* Tech Stack Cards */
+    .tech-card {
+      background: var(--surface-2);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: all 0.2s ease;
+    }
+    .tech-card:hover {
+      border-color: var(--neon-gold);
+      box-shadow: 0 6px 18px -4px rgba(245, 158, 11, 0.2);
+      transform: translateY(-2px);
+    }
+    .tech-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .tech-icon-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .tech-icon {
+      width: 34px;
+      height: 34px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 19px;
+      border: 1px solid var(--border-hairline);
+    }
+    .tech-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-heading);
+    }
+    .tech-role-badge {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
+      background: rgba(245, 158, 11, 0.1);
+      color: var(--neon-gold);
+      border: 1px solid rgba(245, 158, 11, 0.25);
+    }
+    .tech-desc {
+      font-size: 13px;
+      color: var(--text-body);
+      line-height: 1.5;
+    }
+
+    /* Architecture Monospace Diagrams */
+    .arch-diagram {
+      background: #090B10;
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      color: #93C5FD;
+      line-height: 1.5;
+      white-space: pre;
+      overflow-x: auto;
+      box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
+    }
+
+    /* Comparison Table */
+    .comparison-table-wrap {
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      background: var(--surface-1);
+    }
+    .comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+      text-align: left;
+    }
+    .comparison-table th {
+      background: rgba(245, 158, 11, 0.08);
+      color: var(--neon-gold);
+      padding: 10px 14px;
+      font-weight: 700;
+      border-bottom: 1px solid var(--border-hairline);
+    }
+    .comparison-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      color: var(--text-body);
+      vertical-align: top;
+    }
+    .comparison-table tr:last-child td {
+      border-bottom: none;
+    }
+    .comparison-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    /* Interactive Mockup Containers */
+    .mockup-frame {
+      background: #0B0D13;
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-lg);
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
+      position: relative;
+    }
+    .mockup-header-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      margin-bottom: 14px;
+    }
+    .mockup-dots {
+      display: flex;
+      gap: 6px;
+    }
+    .mockup-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #374151;
+    }
+    .mockup-dot.red { background: #EF4444; }
+    .mockup-dot.yellow { background: #F59E0B; }
+    .mockup-dot.green { background: #10B981; }
+
+    .mockup-route {
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      color: var(--text-muted);
+      background: var(--surface-2);
+      padding: 3px 10px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-hairline);
+    }
+
+    /* Status Badges */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: var(--radius-pill);
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .status-badge.success {
+      background: var(--status-success-bg);
+      color: var(--status-success);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .status-badge.warning {
+      background: var(--status-warning-bg);
+      color: var(--status-warning);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+    .status-badge.danger {
+      background: var(--status-danger-bg);
+      color: var(--status-danger);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    /* Copy Button Pill */
+    .copy-pill-btn {
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      color: var(--neon-gold);
+      border-radius: var(--radius-pill);
+      padding: 3px 10px;
+      font-size: 11.5px;
+      font-family: var(--font-thai);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.2s ease;
+    }
+    .copy-pill-btn:hover {
+      background: var(--neon-gold);
+      color: #000;
+    }
+
+    /* Email Tab Buttons */
+    .email-tab-btn {
+      background: var(--surface-2);
+      border: 1px solid var(--border-hairline);
+      color: var(--text-muted);
+      padding: 5px 12px;
+      border-radius: var(--radius-pill);
+      font-size: 11.5px;
+      cursor: pointer;
+      font-family: var(--font-thai);
+      transition: all 0.2s ease;
+    }
+    .email-tab-btn.active {
+      background: var(--brand-red);
+      color: #fff;
+      border-color: var(--neon-gold);
+      font-weight: 700;
+      box-shadow: 0 0 10px var(--brand-red-glow);
+    }
+
+    /* Metrics highlight strip */
+    .metrics-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      background: rgba(13, 14, 18, 0.6);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+    }
+    .metric-chip {
+      text-align: center;
+    }
+    .metric-val {
+      font-family: var(--font-mono);
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--neon-gold);
+    }
+    .metric-lbl {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* Takeaways Card */
+    .takeaway-card {
+      background: var(--surface-2);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-lg);
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      border-top: 3px solid var(--neon-gold);
+      transition: all 0.25s ease;
+    }
+    .takeaway-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px -6px rgba(245, 158, 11, 0.2);
+    }
+    .takeaway-icon {
+      font-size: 26px;
+    }
+    .takeaway-title {
+      font-size: 15.5px;
+      font-weight: 700;
+      color: var(--text-heading);
+    }
+    .takeaway-desc {
+      font-size: 13px;
+      color: var(--text-body);
+      line-height: 1.6;
+    }
+
+    /* ==========================================================================
+       6. BOTTOM CONTROLS & SPEAKER NOTES DRAWER
+       ========================================================================== */
+    footer.presentation-footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 60px;
+      background: rgba(13, 14, 18, 0.92);
+      backdrop-filter: blur(14px);
+      border-top: 1px solid var(--border-hairline);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      z-index: 90;
+    }
+
+    .footer-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .slide-dots-container {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .slide-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--surface-2);
+      border: 1px solid var(--border-hairline);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .slide-dot:hover {
+      background: var(--surface-hover);
+      border-color: var(--neon-gold);
+    }
+    .slide-dot.active {
+      width: 22px;
+      border-radius: var(--radius-pill);
+      background: linear-gradient(90deg, var(--brand-red), var(--neon-gold));
+      border-color: var(--neon-gold);
+      box-shadow: 0 0 8px var(--neon-gold-glow);
+    }
+
+    .footer-current-title {
+      color: var(--text-muted);
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 380px;
+    }
+
+    .footer-nav-buttons {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .nav-btn {
+      background: var(--surface-1);
+      border: 1px solid var(--border-hairline);
+      color: var(--text-heading);
+      border-radius: var(--radius-md);
+      padding: 8px 18px;
+      font-size: 14px;
+      font-family: var(--font-thai);
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      outline: none;
+    }
+    .nav-btn:hover {
+      background: var(--surface-hover);
+      border-color: var(--neon-gold);
+    }
+    .nav-btn.primary {
+      background: linear-gradient(135deg, var(--brand-red), #691320);
+      border-color: rgba(245, 158, 11, 0.5);
+      color: #fff;
+      box-shadow: 0 0 15px var(--brand-red-glow);
+    }
+    .nav-btn.primary:hover {
+      background: linear-gradient(135deg, #a82235, #7a1626);
+      box-shadow: 0 0 20px var(--brand-red-glow);
+    }
+    .nav-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      border-color: var(--border-hairline);
+    }
+
+    /* Speaker Notes Drawer */
+    .speaker-notes-drawer {
+      position: fixed;
+      bottom: 60px;
+      left: 0;
+      width: 100%;
+      max-height: 270px;
+      background: rgba(18, 20, 27, 0.96);
+      backdrop-filter: blur(16px);
+      border-top: 2px solid var(--neon-gold);
+      box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.7);
+      z-index: 85;
+      transform: translateY(110%);
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+    }
+    .speaker-notes-drawer.open {
+      transform: translateY(0);
+    }
+    .notes-drawer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 24px;
+      background: rgba(245, 158, 11, 0.08);
+      border-bottom: 1px solid var(--border-hairline);
+    }
+    .notes-title-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .notes-tag {
+      background: var(--neon-gold);
+      color: #000;
+      font-weight: 800;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
+    }
+    .notes-heading {
+      color: var(--text-heading);
+      font-size: 13.5px;
+      font-weight: 700;
+    }
+    .notes-tools {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .notes-tool-btn {
+      background: var(--surface-2);
+      border: 1px solid var(--border-hairline);
+      color: var(--text-muted);
+      border-radius: 6px;
+      padding: 3px 8px;
+      font-size: 11.5px;
+      cursor: pointer;
+      font-family: var(--font-thai);
+      transition: all 0.2s ease;
+    }
+    .notes-tool-btn:hover {
+      color: var(--text-heading);
+      border-color: var(--neon-gold);
+    }
+    .notes-drawer-body {
+      padding: 16px 24px;
+      overflow-y: auto;
+      font-size: 14.5px;
+      line-height: 1.7;
+      color: #E2E8F0;
+    }
+    .notes-drawer-body blockquote {
+      border-left: 3px solid var(--neon-gold);
+      padding-left: 14px;
+      margin-bottom: 12px;
+      color: #F1F5F9;
+      font-style: normal;
+    }
+    .notes-drawer-body .talking-points {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-hairline);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: var(--text-body);
+      margin-top: 10px;
+    }
+
+    /* Modal Grid Jump */
+    .grid-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      z-index: 120;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .grid-modal-overlay.open {
+      display: flex;
+    }
+    .grid-modal-card {
+      background: var(--surface-1);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-xl);
+      width: 100%;
+      max-width: 900px;
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 24px;
+      box-shadow: var(--shadow-card);
+    }
+    .grid-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-hairline);
+    }
+    .grid-modal-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--text-heading);
+    }
+    .grid-modal-list {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+    .grid-jump-item {
+      background: var(--surface-2);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: all 0.2s ease;
+    }
+    .grid-jump-item:hover {
+      border-color: var(--neon-gold);
+      transform: translateY(-2px);
+      background: var(--surface-hover);
+    }
+    .grid-jump-item.active {
+      border-color: var(--neon-gold);
+      background: rgba(245, 158, 11, 0.12);
+    }
+    .jump-item-num {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--surface-1);
+      border: 1px solid var(--border-hairline);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 12px;
+      color: var(--neon-gold);
+      flex-shrink: 0;
+    }
+    .jump-item-info h5 {
+      color: var(--text-heading);
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+    .jump-item-info p {
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+
+    /* Global feedback toast */
+    .toast-popup {
+      position: fixed;
+      bottom: 74px;
+      right: 24px;
+      background: #10B981;
+      color: #000;
+      font-weight: 700;
+      font-size: 12.5px;
+      padding: 8px 16px;
+      border-radius: var(--radius-pill);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+      z-index: 150;
+      display: none;
+      animation: fadeIn 0.2s ease;
+    }
+
+    /* Speaker Notes Tab Pills & Grill-Me Card */
+    .notes-tab-pills {
+      display: inline-flex;
+      gap: 6px;
+      margin-left: 14px;
+    }
+    .notes-tab-pill {
+      background: var(--surface-2);
+      border: 1px solid var(--border-hairline);
+      color: var(--text-muted);
+      border-radius: var(--radius-pill);
+      padding: 3px 12px;
+      font-size: 11.5px;
+      cursor: pointer;
+      font-family: var(--font-thai);
+      transition: all 0.2s ease;
+    }
+    .notes-tab-pill:hover {
+      color: var(--text-heading);
+      border-color: var(--neon-gold);
+    }
+    .notes-tab-pill.active {
+      background: var(--brand-red);
+      color: #fff;
+      border-color: var(--neon-gold);
+      font-weight: 700;
+      box-shadow: 0 0 10px var(--brand-red-glow);
+    }
+    .grill-card {
+      background: rgba(143, 29, 45, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .grill-q-title {
+      color: var(--neon-gold);
+      font-weight: 800;
+      font-size: 13.5px;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .grill-q-text {
+      color: #FCA5A5;
+      font-size: 13.5px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 8px 12px;
+      border-radius: 6px;
+      border-left: 3px solid var(--status-danger);
+      line-height: 1.5;
+    }
+    .grill-a-title {
+      color: #34D399;
+      font-weight: 800;
+      font-size: 13.5px;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .grill-a-text {
+      color: #E2E8F0;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+    .kbd-badge {
+      display: inline-block;
+      padding: 2px 7px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--neon-gold);
+      background: #1e2230;
+      border: 1px solid var(--border-hairline);
+      border-radius: 4px;
+      box-shadow: 0 2px 0 rgba(0,0,0,0.4);
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- Top Progress Bar -->
+  <div class="top-progress-container">
+    <div id="top-progress-bar" class="top-progress-bar"></div>
+  </div>
+
+  <!-- Header Navigation -->
+  <header class="presentation-header">
+    <div class="brand-cluster">
+      <div class="brand-logo-pill">
+        <span>🌶️</span>
+        <span>ลาบแรกพบ</span>
+      </div>
+      <div class="brand-title">ระบบจำหน่ายบัตรและเช็คอินคอนเสิร์ต</div>
+      <div class="brand-subtitle-tag">คู่มือสถาปัตยกรรม & เครื่องมือเชิงลึก</div>
+    </div>
+
+    <div class="header-controls">
+      <div id="slide-counter-chip" class="slide-counter-chip">01 / 14</div>
+
+      <button id="btn-grid-modal" class="ctrl-btn" title="เปิดสารบัญสไลด์ (G / M)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        <span>สารบัญ</span>
+      </button>
+
+      <button id="btn-shortcuts-help" class="ctrl-btn" title="คีย์ลัดสำหรับนำเสนอ (?)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span>คีย์ลัด</span>
+      </button>
+
+      <button id="btn-speaker-notes" class="ctrl-btn" title="เปิด/ปิดบทพูดสไลด์ (N)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span>บทพูด</span>
+      </button>
+
+      <button id="btn-fullscreen" class="ctrl-btn" title="เต็มจอ (F)">
+        <svg id="icon-fs-enter" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+        <svg id="icon-fs-exit" style="display:none;" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>
+        <span id="label-fs">เต็มจอ</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Presentation Stage -->
+  <main class="presentation-stage">
+    <div class="slide-viewport">
+
+      <!-- ==============================================================
+           SLIDE 01: หน้าปกโปรเจกต์ (Introduction)
+           ============================================================== -->
+      <section class="slide-content-wrap active" data-slide="1" data-title="หน้าปก: เบื้องหลังระบบลาบแรกพบ">
+        <div class="slide-tag-pill">
+          <span>🚀</span>
+          <span>[PROJECT SHOWCASE & ARCHITECTURE WALKTHROUGH]</span>
+        </div>
+        <h1 class="slide-title">เบื้องหลังการสร้างเว็บไซต์จำหน่ายบัตรและเช็คอิน <span class="highlight">"งานลาบแรกพบ"</span></h1>
+        <p class="slide-subtitle">จากร้านอาหารอีสานดนตรีสด สู่ระบบจัดการอีเวนต์บนมือถือเต็มรูปแบบ โดยไม่ต้องโหลดแอปเพิ่ม (14 สไลด์เจาะลึก)</p>
+
+        <div class="grid-2col">
+          <!-- Left Column -->
+          <div style="display: flex; flex-direction: column; gap: 14px; justify-content: center;">
+            <div class="card-box highlight-glow" style="background: rgba(22, 25, 34, 0.85);">
+              <h3 style="color: var(--neon-gold); font-size: 16px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                <span>🎯</span> เป้าหมายและโจทย์ของโปรเจกต์
+              </h3>
+              <p style="font-size: 14px; line-height: 1.7; color: var(--text-body);">
+                เปลี่ยนการจองตั๋วแบบเดิมที่ต้องรอแอดมินตอบแชท ตรวจสลิปด้วยมือ และจดรายชื่อใส่สมุด ให้กลายเป็น 
+                <strong style="color: #fff;">ระบบอัตโนมัติบนมือถือ 100%</strong> รวดเร็ว ปลอดภัย ตั๋วใบละ 49 บาท เงินเข้าตรง และป้องกันการโกงได้จริงหน้างาน
+              </p>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+              <div class="card-box" style="padding: 12px; text-align: center;">
+                <div style="font-size: 22px; margin-bottom: 4px;">📱</div>
+                <div style="color: var(--text-heading); font-weight: 700; font-size: 12.5px;">Mobile-First</div>
+                <div style="color: var(--text-muted); font-size: 10.5px;">เปิดผ่านเบราว์เซอร์ทันที</div>
+              </div>
+              <div class="card-box" style="padding: 12px; text-align: center;">
+                <div style="font-size: 22px; margin-bottom: 4px;">💳</div>
+                <div style="color: var(--text-heading); font-weight: 700; font-size: 12.5px;">PromptPay QR</div>
+                <div style="color: var(--text-muted); font-size: 10.5px;">ล็อกยอดโอนตรง 49฿/ใบ</div>
+              </div>
+              <div class="card-box" style="padding: 12px; text-align: center;">
+                <div style="font-size: 22px; margin-bottom: 4px;">⚡</div>
+                <div style="color: var(--text-heading); font-weight: 700; font-size: 12.5px;">Realtime Scan</div>
+                <div style="color: var(--text-muted); font-size: 10.5px;">สแกนตั๋วใน 1 วินาที</div>
+              </div>
+            </div>
+
+            <!-- Metrics Highlight from DESIGN.md -->
+            <div class="metrics-bar">
+              <div class="metric-chip">
+                <div class="metric-val">51 ใบ</div>
+                <div class="metric-lbl">บัตรจำหน่ายจริง</div>
+              </div>
+              <div class="metric-chip">
+                <div class="metric-val" style="color: var(--status-success);">96.1%</div>
+                <div class="metric-lbl">อัตราเช็คอินหน้างาน</div>
+              </div>
+              <div class="metric-chip">
+                <div class="metric-val" style="color: #60A5FA;">1-2 วิ</div>
+                <div class="metric-lbl">ความเร็วตรวจตั๋ว</div>
+              </div>
+              <div class="metric-chip">
+                <div class="metric-val" style="color: var(--status-danger);">100%</div>
+                <div class="metric-lbl">สกัดสลิปซ้ำสำเร็จ</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column (Showcase Graphic) -->
+          <div class="mockup-frame" style="justify-content: center; align-items: center; text-align: center; border-color: rgba(245, 158, 11, 0.4); background: radial-gradient(circle at center, rgba(143, 29, 45, 0.3) 0%, #0d0e12 80%);">
+            <div style="position: relative; width: 120px; height: 120px; margin-bottom: 12px;">
+              <img src="./public/Logo.jpg" onerror="if(!this.dataset.retry){this.dataset.retry=1;this.src='/Logo.jpg';}else{this.parentElement.innerHTML='<div style=\'width:120px;height:120px;border-radius:50%;background:#8F1D2D;display:flex;align-items:center;justify-content:center;font-size:50px;\'>🌶️</div>';}" alt="Logo งานลาบแรกพบ" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%; border: 3px solid var(--neon-gold); box-shadow: 0 0 25px var(--neon-gold-glow);">
+            </div>
+            
+            <div style="display: inline-block; background: var(--brand-red); color: #fff; font-size: 11.5px; font-weight: 700; padding: 4px 12px; border-radius: var(--radius-pill); margin-bottom: 8px; border: 1px solid rgba(245, 158, 11, 0.5);">
+              ร้านลาบก้อยซอยนานา x ระบบจัดการอีเวนต์
+            </div>
+            <h2 style="color: var(--text-heading); font-size: 20px; font-weight: 800; margin-bottom: 6px;">
+              งานลาบแรกพบ ครั้งที่ 1 & ครั้งที่ 2
+            </h2>
+            <p style="color: var(--text-muted); font-size: 12.5px; max-width: 320px; margin-bottom: 14px;">
+              บัตรราคา 49฿ • บัญชีกสิกรไทย & พร้อมเพย์ • ตรวจสลิปด้วย SHA-256 • กล้องสแกนตั๋วหน้างาน
+            </p>
+            <div style="display: flex; gap: 6px; font-family: var(--font-mono); font-size: 11px; color: var(--neon-gold); flex-wrap: wrap; justify-content: center;">
+              <span style="background: rgba(245, 158, 11, 0.1); padding: 3px 8px; border-radius: 6px; border: 1px solid rgba(245, 158, 11, 0.2);">Next.js 14</span>
+              <span style="background: rgba(245, 158, 11, 0.1); padding: 3px 8px; border-radius: 6px; border: 1px solid rgba(245, 158, 11, 0.2);">Supabase</span>
+              <span style="background: rgba(245, 158, 11, 0.1); padding: 3px 8px; border-radius: 6px; border: 1px solid rgba(245, 158, 11, 0.2);">Vercel</span>
+              <span style="background: rgba(245, 158, 11, 0.1); padding: 3px 8px; border-radius: 6px; border: 1px solid rgba(245, 158, 11, 0.2);">Nodemailer</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==============================================================
+           SLIDE 02: เครื่องมือที่ใช้สร้างเว็บ 6 ตัวหลัก (Core Tech Stack)
+           ============================================================== -->
+      <section class="slide-content-wrap" data-slide="2" data-title="เครื่องมือที่ใช้สร้างเว็บ (Core Tech Stack)">
+        <div class="slide-tag-pill">
+          <span>🛠️</span>
+          <span>[TOOLS & TECHNOLOGIES]</span>
+        </div>
+        <h1 class="slide-title">เว็บไซต์นี้ใช้เครื่องมืออะไรสร้างบ้าง? <span class="highlight">(และแต่ละตัวมีหน้าที่อะไร)</span></h1>
+        <p class="slide-subtitle">6 เครื่องมือคัดสรรพิเศษเพื่อความเร็ว ความปลอดภัย และความเรียบง่ายในการใช้งานจริง</p>
+
+        <div class="grid-6bento">
+          <!-- Tool 1 -->
+          <div class="tech-card">
+            <div>
+              <div class="tech-card-header">
+                <div class="tech-icon-title">
+                  <div class="tech-icon" style="color: #60A5FA;">⚡</div>
+                  <div class="tech-name">Next.js 14</div>
+                </div>
+                <div class="tech-role-badge">Frontend & Backend</div>
+              </div>
+              <p class="tech-desc">
+                <strong>โครงสร้างเว็บหลัก (App Router):</strong> รวมหน้าจอผู้ใช้และ API Serverless ไว้ในที่เดียว รองรับ TypeScript โหลดเร็วมากบนมือถือ
+              </p>
+            </div>
+          </div>
+
+          <!-- Tool 2 -->
+          <div class="tech-card">
+            <div>
+              <div class="tech-card-header">
+                <div class="tech-icon-title">
+                  <div class="tech-icon" style="color: #38BDF8;">🎨</div>
+                  <div class="tech-name">Tailwind CSS</div>
+                </div>
+                <div class="tech-role-badge">UI Styling</div>
+              </div>
+              <p class="tech-desc">
+                <strong>ตกแต่งหน้าตาเว็บ:</strong> คุมโทนสี Dark Mode Neon Nightlife ตาม DESIGN.md ปุ่มใหญ่และกดง่ายด้วยนิ้วโป้งในที่แสงน้อย
+              </p>
+            </div>
+          </div>
+
+          <!-- Tool 3 -->
+          <div class="tech-card">
+            <div>
+              <div class="tech-card-header">
+                <div class="tech-icon-title">
+                  <div class="tech-icon" style="color: #34D399;">🗄️</div>
+                  <div class="tech-name">Supabase</div>
+                </div>
+                <div class="tech-role-badge">PostgreSQL & Storage</div>
+              </div>
+              <p class="tech-desc">
+                <strong>ฐานข้อมูลและเก็บสลิป:</strong> เก็บคำสั่งซื้อ ตั๋ว และไฟล์ภาพสลิปใน Bucket 'slips' พร้อมระบบ Realtime Sync อัปเดตข้อมูลทันที
+              </p>
+            </div>
+          </div>
+
+          <!-- Tool 4 -->
+          <div class="tech-card">
+            <div>
+              <div class="tech-card-header">
+                <div class="tech-icon-title">
+                  <div class="tech-icon" style="color: #FBBF24;">💳</div>
+                  <div class="tech-name">PromptPay QR</div>
+                </div>
+                <div class="tech-role-badge">EMVCo Engine</div>
+              </div>
+              <p class="tech-desc">
+                <strong>ระบบสร้าง QR จ่ายเงิน:</strong> ใช้ไลบรารี <code>promptpay-qr</code> คำนวณ Payload ตามยอดเงินจริง (ใบละ 49฿) สแกนแล้วขึ้นยอดตรงเป๊ะ
+              </p>
+            </div>
+          </div>
+
+          <!-- Tool 5 -->
+          <div class="tech-card">
+            <div>
+              <div class="tech-card-header">
+                <div class="tech-icon-title">
+                  <div class="tech-icon" style="color: #A78BFA;">📷</div>
+                  <div class="tech-name">HTML5 Camera</div>
+                </div>
+                <div class="tech-role-badge">Browser Scanner</div>
+              </div>
+              <p class="tech-desc">
+                <strong>ระบบสแกนผ่านกล้อง:</strong> ใช้ <code>html5-qrcode</code> สตรีมกล้องมือถือสตาฟผ่าน Safari/Chrome เพื่อตรวจตั๋วหน้างานใน 1 วินาที
+              </p>
+            </div>
+          </div>
+
+          <!-- Tool 6 -->
+          <div class="tech-card">
+            <div>
+              <div class="tech-card-header">
+                <div class="tech-icon-title">
+                  <div class="tech-icon" style="color: #F87171;">🔒</div>
+                  <div class="tech-name">Node Crypto</div>
+                </div>
+                <div class="tech-role-badge">Security & Hashing</div>
+              </div>
+              <p class="tech-desc">
+                <strong>ความปลอดภัยสูง:</strong> สุ่มรหัสตั๋ว 32 Hex ด้วย <code>crypto.randomBytes(16)</code> และคำนวณลายนิ้วมือสลิปด้วย SHA-256 ป้องกันสลิปซ้ำ
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==============================================================
+           SLIDE 03: การ Push ขึ้นเป็น Website & CI/CD Walkthrough
+           ============================================================== -->
+      <section class="slide-content-wrap" data-slide="3" data-title="การ Push ขึ้นเป็น Website (Deployment & CI/CD)">
+        <div class="slide-tag-pill">
+          <span>🚀</span>
+          <span>[DEPLOYMENT & CLOUD CI/CD]</span>
+        </div>
+        <h1 class="slide-title">การ Push โค้ดขึ้นสู่ระบบจริง: <span class="highlight">สถาปัตยกรรมคลาวด์และขั้นตอน CI/CD</span></h1>
+        <p class="slide-subtitle">จากเครื่องนักพัฒนา สู่เว็บไซต์ Production ที่รองรับผู้ใช้งานพร้อมกันแบบ Serverless บน Vercel และ Supabase</p>
+
+        <div class="grid-2col">
+          <!-- Left Column (Steps & Env) -->
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div class="arch-diagram">
+[ Developer Push ] ────► [ GitHub Repository ] ────► [ Vercel Edge / Serverless ] ◄────► [ Supabase Cloud ]
+ git add .                - Branch: main              - Next.js 14 App Router           - PostgreSQL 15
+ git commit -m "..."      - Automated Webhook         - Global Edge CDN                 - Storage Bucket: 'slips'
+ git push origin main     - Source Control            - Zero Cold Start Functions       - Realtime Replication</div>
+
+            <div class="card-box">
+              <h4 style="color: var(--neon-gold); font-size: 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                <span>🔑</span> การตั้งค่า 6 Environment Variables ที่จำเป็นใน Production
+              </h4>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 7px; font-family: var(--font-mono); font-size: 10.5px;">
+                <div style="background: rgba(0,0,0,0.4); padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border-hairline);">
+                  <strong style="color: #60A5FA;">NEXT_PUBLIC_SUPABASE_URL</strong><br>
+                  <span style="color: var(--text-muted); font-size: 9.5px;">URL ปลายทางของฐานข้อมูล Supabase</span>
+                </div>
+                <div style="background: rgba(0,0,0,0.4); padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border-hairline);">
+                  <strong style="color: #60A5FA;">NEXT_PUBLIC_SUPABASE_ANON_KEY</strong><br>
+                  <span style="color: var(--text-muted); font-size: 9.5px;">คีย์ Public หน้าบ้าน (จำกัดด้วย RLS)</span>
+                </div>
+                <div style="background: rgba(0,0,0,0.4); padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border-hairline);">
+                  <strong style="color: #F87171;">SUPABASE_SERVICE_ROLE_KEY</strong><br>
+                  <span style="color: var(--text-muted); font-size: 9.5px;">คีย์สิทธิ์สูงสุด Bypass RLS (Server Only)</span>
+                </div>
+                <div style="background: rgba(0,0,0,0.4); padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border-hairline);">
+                  <strong style="color: #34D399;">SMTP_USER</strong><br>
+                  <span style="color: var(--text-muted); font-size: 9.5px;">อีเมลผู้ส่ง Gmail (พอร์ต 465 SSL)</span>
+                </div>
+                <div style="background: rgba(0,0,0,0.4); padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border-hairline);">
+                  <strong style="color: #FBBF24;">SMTP_PASS</strong><br>
+                  <span style="color: var(--text-muted); font-size: 9.5px;">Gmail App Password 16 หลัก (ตัดวรรค)</span>
+                </div>
+                <div style="background: rgba(0,0,0,0.4); padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border-hairline);">
+                  <strong style="color: #F59E0B;">PROMPTPAY_ID</strong><br>
+                  <span style="color: var(--text-muted); font-size: 9.5px;">เลขพร้อมเพย์สร้าง EMVCo (081-234-5678)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column (Mockup Build Pipeline) -->
+          <div class="mockup-frame">
+            <div class="mockup-header-bar">
+              <div class="mockup-dots">
+                <div class="mockup-dot red"></div>
+                <div class="mockup-dot yellow"></div>
+                <div class="mockup-dot green"></div>
+              </div>
+              <div class="mockup-route">vercel.com/larb-raek-phob/deployments</div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                  <div style="color: var(--status-success); font-weight: 700; font-size: 13px;">✓ Production Deployment Ready</div>
+                  <div style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);">Commit 7a3c9f2: "feat: add email inline CID attachments"</div>
+                </div>
+                <span class="status-badge success">14.2s</span>
+              </div>
+
+              <div style="background: var(--surface-1); border: 1px solid var(--border-hairline); border-radius: 8px; padding: 12px; font-family: var(--font-mono); font-size: 11.5px; line-height: 1.6; color: var(--text-body);">
+                <div>$ git push origin main</div>
+                <div style="color: var(--text-muted);">──► Vercel Build Hook Triggered</div>
+                <div style="color: #60A5FA;">──► Next.js 14 App Router compiled successfully</div>
+                <div style="color: #34D399;">──► Supabase PostgreSQL Schema synced</div>
+                <div style="color: #FBBF24;">──► Storage Bucket 'slips' verified (Public access disabled)</div>
+                <div style="color: var(--status-success); font-weight: 700;">──► Live at: https://larb-raek-phob.vercel.app</div>
+              </div>
+
+              <div style="display: flex; gap: 8px; font-size: 11.5px; color: var(--text-muted);">
+                <span>🌍 Edge CDN: แคชรูปและหน้าแรกโหลดใน 40ms</span>
+                <span>• 🛡️ SSL 100% ปลอดภัย</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==============================================================
+           SLIDE 04: ข้อมูลการเงิน บัญชีธนาคาร และ PromptPay
+           ============================================================== -->
+      <section class="slide-content-wrap" data-slide="4" data-title="ข้อมูลการเงิน บัญชีธนาคาร และ PromptPay">
+        <div class="slide-tag-pill">
+          <span>💰</span>
+          <span>[FINANCIAL & BANKING ARCHITECTURE]</span>
+        </div>
+        <h1 class="slide-title">โครงสร้างข้อมูลการเงินและระบบธนาคาร: <span class="highlight">ตั๋ว 49฿, KBANK, และพร้อมเพย์</span></h1>
+        <p class="slide-subtitle">ออกแบบระบบเงินเข้าให้โปร่งใส ตรวจสอบง่าย เงินเข้าบัญชีผู้จัดตรง 100% ไม่เสียค่าธรรมเนียมแพลตฟอร์ม</p>
+
+        <div class="grid-2col">
+          <!-- Left Column (Bank Data) -->
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <!-- Ticket Price Card -->
+            <div class="card-box" style="border-left: 4px solid var(--neon-gold); padding: 14px 18px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <div style="color: var(--text-muted); font-size: 12px;">ราคาบัตรคอนเสิร์ต</div>
+                  <div style="color: var(--text-heading); font-size: 24px; font-weight: 800; font-family: var(--font-mono);">
+                    49 <span style="font-size: 15px; color: var(--neon-gold);">บาท / ใบ</span>
+                  </div>
+                </div>
+                <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 6px 12px; text-align: right; font-size: 11.5px; color: var(--text-muted);">
+                  1 ใบ = 49฿<br>2 ใบ = 98฿<br>3 ใบ = 147฿
+                </div>
+              </div>
+            </div>
+
+            <!-- KBANK Card -->
+            <div class="card-box" style="border-left: 4px solid #10B981; padding: 14px 18px;">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                  <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                    <span style="background: #00A950; color: #fff; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 4px;">KBANK</span>
+                    <strong style="color: var(--text-heading); font-size: 14px;">ธนาคารกสิกรไทย</strong>
+                  </div>
+                  <div style="font-family: var(--font-mono); font-size: 18px; font-weight: 800; color: #34D399; margin: 4px 0;">
+                    xxx-x-xxxxx-x
+                  </div>
+                  <div style="color: var(--text-muted); font-size: 12px;">
+                    ชื่อบัญชี: <strong style="color: #fff;">บัญชีทางการ งานลาบแรกพบ</strong>
+                  </div>
+                </div>
+                <button id="btn-copy-kbank" class="copy-pill-btn" title="คลิกเพื่อคัดลอกเลขบัญชีดิบ">
+                  <span>📋</span> คัดลอก (xxxxxxxxx)
+                </button>
+              </div>
+            </div>
+
+            <!-- PromptPay Card -->
+            <div class="card-box" style="border-left: 4px solid #60A5FA; padding: 14px 18px;">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                  <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                    <span style="background: #00427A; color: #fff; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 4px;">พร้อมเพย์</span>
+                    <strong style="color: var(--text-heading); font-size: 14px;">PromptPay (National ID)</strong>
+                  </div>
+                  <div style="font-family: var(--font-mono); font-size: 18px; font-weight: 800; color: #93C5FD; margin: 4px 0;">
+                    081-234-5678
+                  </div>
+                  <div style="font-family: var(--font-mono); color: var(--text-muted); font-size: 11px;">
+                    QR Reference: <span style="color: var(--neon-gold);">000000000000000</span>
+                  </div>
+                </div>
+                <button id="btn-copy-promptpay" class="copy-pill-btn" title="คลิกเพื่อคัดลอกรหัสพร้อมเพย์">
+                  <span>📋</span> คัดลอก ID
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column (Money Flow Architecture) -->
+          <div class="mockup-frame" style="justify-content: center;">
+            <div class="mockup-header-bar">
+              <div class="mockup-dots">
+                <div class="mockup-dot red"></div>
+                <div class="mockup-dot yellow"></div>
+                <div class="mockup-dot green"></div>
+              </div>
+              <div class="mockup-route">Financial Flow & Verification Cycle</div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 12px; font-size: 12.5px;">
+              <div style="background: var(--surface-1); border: 1px solid var(--border-hairline); border-radius: 10px; padding: 12px;">
+                <div style="color: var(--neon-gold); font-weight: 700; margin-bottom: 4px;">1. ผู้ซื้อสแกนโอนเงินตรงเข้าบัญชี</div>
+                <p style="color: var(--text-body); font-size: 12px;">
+                  ยอดเงินถูกล็อกใน Dynamic QR (เช่น 2 ใบ = 98.00฿) เงินวิ่งเข้าบัญชีบัญชีทางการ งานลาบแรกพบ ทันที 100% ไม่มีหักเปอร์เซ็นต์
+                </p>
+              </div>
+
+              <div style="text-align: center; color: var(--neon-gold); font-size: 14px; font-weight: 700;">↓</div>
+
+              <div style="background: var(--surface-1); border: 1px solid var(--border-hairline); border-radius: 10px; padding: 12px;">
+                <div style="color: #34D399; font-weight: 700; margin-bottom: 4px;">2. ผู้ซื้อแนบสลิปเข้าระบบคลาวด์</div>
+                <p style="color: var(--text-body); font-size: 12px;">
+                  ไฟล์สลิปถูกส่งเข้า Supabase Storage Bucket 'slips' และระบบคำนวณ SHA-256 Hash เพื่อตรวจจับสลิปซ้ำทันที
+                </p>
+              </div>
+
+              <div style="text-align: center; color: var(--status-success); font-size: 14px; font-weight: 700;">↓</div>
+
+              <div style="background: var(--surface-1); border: 1px solid var(--border-hairline); border-radius: 10px; padding: 12px;">
+                <div style="color: #60A5FA; font-weight: 700; margin-bottom: 4px;">3. สตาฟอนุมัติและออกตั๋ว QR อัตโนมัติ</div>
+                <p style="color: var(--text-body); font-size: 12px;">
+                  สตาฟตรวจความถูกต้องใน /admin เมื่อกดอนุมัติ ระบบจะส่งตั๋ว QR Code และส่งอีเมลยืนยันให้ลูกค้าทันที
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==============================================================
+           SLIDE 05: เจาะลึกระบบสร้าง QR Code 2 รูปแบบ
+           ============================================================== -->
+      <section class="slide-content-wrap" data-slide="5" data-title="เจาะลึกระบบสร้าง QR Code 2 รูปแบบ">
+        <div class="slide-tag-pill">
+          <span>🔲</span>
+          <span>[DUAL QR CODE ENGINE]</span>
+        </div>
+        <h1 class="slide-title">เจาะลึกสถาปัตยกรรม QR Code 2 รูปแบบ: <span class="highlight">ชำระเงิน vs ตรวจตั๋วเข้างาน</span></h1>
+        <p class="slide-subtitle">สองเทคโนโลยีที่หน้าตาเป็นจุดสี่เหลี่ยมเหมือนกัน แต่เบื้องหลังใช้มาตรฐานและอัลกอริทึมคนละขั้ว</p>
+
+        <div class="comparison-table-wrap" style="margin-bottom: 14px;">
+          <table class="comparison-table">
+            <thead>
+              <tr>
+                <th style="width: 22%;">มิติการทำงาน</th>
+                <th style="width: 39%; color: #FBBF24;">1. Dynamic PromptPay QR (ฝั่งจ่ายเงิน)</th>
+                <th style="width: 39%; color: #60A5FA;">2. Ticket Entrance QR (ฝั่งตั๋วเข้างาน)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>จุดประสงค์</strong></td>
+                <td>ให้ผู้ซื้อสแกนด้วยแอปธนาคารเพื่อโอนเงิน</td>
+                <td>ให้สตาฟสแกนด้วยกล้องมือถือหน้าประตูร้านเพื่อรับ Wristband</td>
+              </tr>
+              <tr>
+                <td><strong>ไลบรารีที่ใช้สร้าง</strong></td>
+                <td><code>promptpay-qr</code> + <code>qrcode</code></td>
+                <td>Node.js <code>crypto</code> + <code>qrcode</code> + <code>html5-qrcode</code></td>
+              </tr>
+              <tr>
+                <td><strong>การคำนวณข้อมูล</strong></td>
+                <td>สร้าง <strong>EMVCo Payload</strong> มาตรฐาน BOT ตามสูตร <code>(จำนวนใบ × 49฿)</code></td>
+                <td>สุ่มรหัสลับเฉพาะบุคคล <code>crypto.randomBytes(16)</code> ได้รหัส <strong>32 Hex Characters</strong></td>
+              </tr>
+              <tr>
+                <td><strong>รูปแบบการแสดงผล</strong></td>
+                <td>Base64 Data URL แสดงในแท็ก <code>&lt;img&gt;</code> บนหน้าเว็บ</td>
+                <td>สตรีมภาพบนเว็บ และแนบแบบ <strong>Inline CID</strong> ในอีเมล</td>
+              </tr>
+              <tr>
+                <td><strong>กลไกความปลอดภัย</strong></td>
+                <td>ล็อกยอดเงินเป๊ะ ป้องกันการโอนขาด/เกิน</td>
+                <td><strong>Atomic Check-in</strong> ในฐานข้อมูล สกัดการนำภาพแคปจอมาสแกนซ้ำ 100%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Spec Preview Box -->
+        <div class="arch-diagram" style="color: #E2E8F0; font-size: 11px;">
+[ PromptPay EMVCo Payload ]  00020101021229370016A0000006770101110113081-234-56785802TH5303764540598.006304B14A
+[ Ticket 32-Hex Crypto QR ]  7F3A9C1D0E4B88219F33A125CD67448B  ──► Atomic Update: status = 'checked_in'</div>
+      </section>
+
+      <!-- ==============================================================
+           SLIDE 06: ระบบส่งอีเมลและตั๋วอัตโนมัติ (lib/email.ts)
+           ============================================================== -->
+      <section class="slide-content-wrap" data-slide="6" data-title="ระบบส่งอีเมลและตั๋วอัตโนมัติ (lib/email.ts)">
+        <div class="slide-tag-pill">
+          <span>📧</span>
+          <span>[EMAIL ENGINE & NOTIFICATIONS]</span>
+        </div>
+        <h1 class="slide-title">ระบบส่งอีเมลและส่งตั๋วอัตโนมัติ: <span class="highlight">Gmail SMTP และเทคนิค Inline CID</span></h1>
+        <p class="slide-subtitle">ส่งตั๋วตรงถึงกล่องจดหมายผู้ซื้อ พร้อมแก้ปัญหาอีเมลบล็อกรูปภาพด้วยการฝังภาพผ่าน Content-ID</p>
+
+        <div class="grid-2col">
+          <!-- Left Column (Core Features) -->
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="card-box" style="padding: 14px;">
+              <h4 style="color: var(--neon-gold); font-size: 13.5px; margin-bottom: 4px;">
+                ⚡ 1. Gmail SMTP พอร์ต 465 SSL Direct
+              </h4>
+              <p style="font-size: 12.5px; line-height: 1.5; color: var(--text-body);">
+                ใช้ <code>nodemailer</code> เชื่อมต่อ <code>smtp.gmail.com:465</code> ผ่าน App Password 16 หลัก โดยมีฟังก์ชันตัดวรรคอัตโนมัติ ป้องกันปัญหาคัดลอกรหัสผ่านติดช่องว่าง
+              </p>
+            </div>
+
+            <div class="card-box" style="padding: 14px;">
+              <h4 style="color: #60A5FA; font-size: 13.5px; margin-bottom: 4px;">
+                🖼️ 2. เทคนิค Inline CID Attachment (ไม่บล็อกรูป)
+              </h4>
+              <p style="font-size: 12.5px; line-height: 1.5; color: var(--text-body);">
+                ใช้ <code>QRCode.toBuffer()</code> สร้าง Buffer ภาพ PNG แล้วแนบในก้อนอีเมลด้วย <code>cid:ticket-1-id</code> ทำให้เปิดเมลแล้วเห็นตั๋วทันที ไม่ต้องกด 'Download Images'
+              </p>
+            </div>
+
+            <div class="card-box" style="padding: 14px;">
+              <h4 style="color: #F87171; font-size: 13.5px; margin-bottom: 4px;">
+                🛡️ 3. Error Classification (แยกแยะข้อผิดพลาด)
+              </h4>
+              <p style="font-size: 12.5px; line-height: 1.5; color: var(--text-body);">
+                ฟังก์ชัน <code>classifySmtpError</code> ตรวจจับ <code>auth_failed</code> (535), <code>provider_error</code> (ESOCKET/ETIMEDOUT), และ quota rate limit (421/450/452) อย่างแม่นยำ
+              </p>
+            </div>
+          </div>
+
+          <!-- Right Column (Interactive Template Switcher) -->
+          <div class="mockup-frame">
+            <div class="mockup-header-bar">
+              <div class="mockup-dots">
+                <div class="mockup-dot red"></div>
+                <div class="mockup-dot yellow"></div>
+                <div class="mockup-dot green"></div>
+              </div>
+              <div class="mockup-route">lib/email.ts Template Previewer</div>
+            </div>
+
+            <!-- Template Selector Tabs -->
+            <div style="display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap;">
+              <button class="email-tab-btn active" data-tmpl="paid">paid (ตั๋ว QR)</button>
+              <button class="email-tab-btn" data-tmpl="order_created">order_created</button>
+              <button class="email-tab-btn" data-tmpl="slip_received">slip_received</button>
+              <button class="email-tab-btn" data-tmpl="partial_approval">partial</button>
+              <button class="email-tab-btn" data-tmpl="slip_rejected">slip_rejected</button>
+            </div>
+
+            <!-- Email Mockup Body -->
+            <div id="email-preview-container" style="background: #ffffff; color: #1f2937; border-radius: 8px; padding: 14px; font-size: 12px; line-height: 1.5; box-shadow: 0 4px 12px rgba(0,0,0,0.4);">
+              <div id="email-preview-subject" style="font-weight: 700; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin-bottom: 8px; color: #111827;">
+                [งานลาบแรกพบ ครั้งที่ 2] ชำระเงินสำเร็จ! บัตรเข้างานของคุณ #LRP-2024-X91A
+              </div>
+              <div id="email-preview-body" style="color: #374151;">
+                สวัสดีคุณ <strong>สมชาย ใจดี</strong>,<br><br>
+                การชำระเงินสำหรับออเดอร์ #LRP-2024-X91A ได้รับการอนุมัติแล้ว! นี่คือตั๋ว QR Code ของคุณ:<br>
+                <div style="text-align: center; margin: 10px auto; padding: 10px; border: 1px solid #e5e7eb; border-radius: 8px; max-width: 180px; background: #fafafa;">
+                  <div style="font-size: 11px; font-weight: 700; margin-bottom: 4px;">บัตรใบที่ 1 จาก 1</div>
+                  <div style="background: #111; color: #fff; padding: 12px; font-family: var(--font-mono); font-size: 10px; border-radius: 6px;">[ QR Code ตั๋วเข้างาน ]</div>
+                  <div style="font-size: 9.5px; color: #6b7280; margin-top: 4px;">cid:ticket-1-uuid</div>
+                </div>
+                <div style="text-align: center; margin-top: 8px;">
+                  <span style="background: #8F1D2D; color: #fff; padding: 6px 14px; border-radius: 6px; font-weight: 700; font-size: 11px; display: inline-block;">เปิดดูตั๋วบนเว็บไซต์</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==============================================================
+           SLIDE 07: ฟีเจอร์ 1 - สั่งซื้อบัตร Stepper (/buy)
+           ============================================================== -->
+      <section class="slide-content-wrap" data-slide="7" data-title="ฟีเจอร์ 1: ระบบสั่งซื้อบัตร Stepper (/buy)">
+        <div class="slide-tag-pill">
+          <span>🛒</span>
+          <span>[FEATURE 01: BUYER FLOW]</span>
+        </div>
+        <h1 class="slide-title">ระบบสั่งซื้อบัตร: ซื้อได้ใน 3 ขั้นตอน <span class="highlight">ไม่สับสน ลดความผิดพลาด</span></h1>
+        <p class="slide-subtitle">แบ่งขั้นตอนเป็น Stepper ชัดเจน พร้อมตรวจสอบเบอร์โทรศัพท์และดักจับบอทแบบเรียลไทม์</p>
+
+        <!-- Workflow Step Banner -->
+        <div class="workflow-strip">
+          <div class="workflow-step active">
+            <div class="workflow-num">1</div>
+            <div class="workflow-text">
+              <h6>เลือกจำนวน</h6>
+              <span>กด [+] หรือ [-] คำนวณเงินสดทันที (ใบละ 49฿)</span>
+            </div>
+          </div>
+          <div class="workflow-arrow">➔</div>
+          <div class="workflow-step">
+            <div class="workflow-num">2</div>
+            <div class="workflow-text">
+              <h6>กรอกข้อมูล</h6>
+              <span>ชื่อ + เบอร์ 10 หลัก ตรวจสอบสด</span>
+            </div>
+          </div>
+          <div class="workflow-arrow">➔</div>
+          <div class="workflow-step">
+            <div class="workflow-num">3</div>
+            <div class="workflow-text">
+              <h6>สรุปยอด</h6>
+              <span>ตรวจสอบยอด กดยืนยันชำระเงิน</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2col">
+          <!-- Left Column (Steps) -->
+          <div class="step-list">
+            <div class="step-item">
+              <div class="step-num-badge">1</div>
+              <div class="step-content">
+                <h4>ขั้นที่ 1: เลือกจำนวนบัตร (Ticket Stepper)</h4>
+                <p>กดปุ่ม [+] หรือ [-] ขนาดใหญ่ ระบบจะคำนวณยอดเงินสดทันที (ใบละ 49 บาท) เช่น 2 ใบ = 98 บาท ลดความผิดพลาดในการคิดเลข</p>
+              </div>
+            </div>
+
+            <div class="step-item">
+              <div class="step-num-badge">2</div>
+              <div class="step-content">
+                <h4>ขั้นที่ 2: กรอกข้อมูลและตรวจเบอร์โทร (Realtime Validation)</h4>
+                <p>กรอกชื่อ-นามสกุล และเบอร์โทร 10 หลัก ระบบจะตรวจจับสดๆ ทันทีว่าขึ้นต้นด้วย '0' และครบ 10 หลักหรือไม่ ถ้าพิมพ์ผิดจะเตือนทันที</p>
+              </div>
+            </div>
+
+            <div class="step-item">
+              <div class="step-num-badge">3</div>
+              <div class="step-content">
+                <h4>ขั้นที่ 3: สรุปยอดและป้องกันบอท (Honeypot Protection)</h4>
+                <p>หน้าสรุปยอดพร้อมเงื่อนไขงาน มีช่อง Honeypot ซ่อนไว้ดักจับบอท หากบอทเผลอกรอกเข้ามา ระบบจะปฏิเสธออเดอร์ทันที</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column (Interactive Stepper Mockup) -->
+          <div class="mockup-frame">
+            <div class="mockup-header-bar">
+              <div class="mockup-dots">
+                <div class="mockup-dot red"></div>
+                <div class="mockup-dot yellow"></div>
+                <div class="mockup-dot green"></div>
+              </div>
+              <div class="mockup-route">larb-raek-phob.vercel.app/buy</div>
+            </div>
+
+            <div style="background: var(--surface-1); border: 1px solid var(--border-hairline); border-radius: 12px; padding: 16px;">
+              <div style="font-size: 13px; font-weight: 700; color: var(--text-heading); margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                <span>จำลองการสั่งซื้อบัตร</span>
+                <span class="status-badge warning" style="font-size: 11px;">ราคา 49฿ / ใบ</span>
+              </div>
+
+              <!-- Counter Widget -->
+              <div style="display: flex; align-items: center; justify-content: space-between; background: var(--surface-2); border: 1px solid var(--border-hairline); border-radius: 10px; padding: 10px 14px; margin-bottom: 12px;">
+                <span style="font-size: 13px; color: var(--text-body);">จำนวนบัตร:</span>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <button id="demo-btn-minus" style="width: 28px; height: 28px; border-radius: 6px; background: var(--surface-1); border: 1px solid var(--border-hairline); color: #fff; cursor: pointer; font-size: 16px; font-weight: 700;">-</button>
+                  <span id="demo-ticket-count" style="font-family: var(--font-mono); font-size: 16px; font-weight: 800; color: var(--neon-gold); min-width: 44px; text-align: center;">2 ใบ</span>
+                  <button id="demo-btn-plus" style="width: 28px; height: 28px; border-radius: 6px; background: var(--brand-red); border: 1px solid rgba(245, 158, 11, 0.4); color: #fff; cursor: pointer; font-size: 16px; font-weight: 700;">+</button>
+                </div>
+              </div>
+
+              <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 14px; padding: 0 4px;">
+                <span style="color: var(--text-muted);">ยอดรวมทั้งสิ้น:</span>
+                <span id="demo-total-price" style="font-family: var(--font-mono); font-weight: 800; color: #10B981; font-size: 15px;">98.00 บาท</span>
+              </div>
+
+              <!-- Phone Input Mockup -->
+              <div style="margin-bottom: 14px;">
+                <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">ทดลองพิมพ์เบอร์โทรศัพท์ (10 หลัก):</label>
+                <input id="demo-phone-input" type="text" value="0812345678" maxlength="10" style="width: 100%; background: var(--surface-2); border: 1px solid var(--border-hairline); border-radius: 8px; padding: 8px 12px; color: #fff; font-family: var(--font-mono); font-size: 13px; outline: none;">
+                <div id="demo-phone-badge" style="font-size: 11px; color: var(--status-success); margin-top: 4px;">✓ ถูกต้อง: เบอร์โทร 10 หลักขึ้นต้นด้วย 0</div>
+              </div>
+
+              <button id="demo-btn-submit" class="nav-btn primary" style="width: 100%; justify-content: center; padding: 10px;">
+                <span>ยืนยันและไปหน้าชำระเงิน</span>
+              </button>
+
+              <div id="demo-submit-toast" style="display: none; margin-top: 10px; background: rgba(16, 185, 129, 0.15); border: 1px solid var(--status-success); color: var(--status-success); border-radius: 8px; padding: 8px; font-size: 12px; text-align: center;">
+                ✓ สร้างคำสั่งซื้อเรียบร้อย! ส่งต่อยอดเงินไปยัง PromptPay QR
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==============================================================
+           SLIDE 08: ฟีเจอร์ 2 - ชำระเงิน Dynamic QR & แนบสลิป (/checkout)
+           ============================================================== -->
+      <section class="slide-content-wrap" data-slide="8" data-title="ฟีเจอร์ 2: PromptPay QR ล็อกยอด & แนบสลิป (/checkout)">
+        <div class="slide-tag-pill">
+          <span>💳</span>
+          <span>[FEATURE 02: PAYMENT & SLIP]</span>
+        </div>
+        <h1 class="slide-title">สแกนจ่ายตรงยอด ไม่ต้องพิมพ์เอง & <span class="highlight">ระบบแนบสลิปยืดหยุ่น</span></h1>
+        <p class="slide-subtitle">ตัดปัญหาโอนผิดยอดด้วย Dynamic QR Code พร้อมข้อมูล KBANK นับถอยหลัง 30 นาที และ Split Payment</p>
+
+        <!-- Workflow Step Banner -->
+        <div class="workflow-strip">
+          <div class="workflow-step">
+            <div class="workflow-num">1</div>
+            <div class="workflow-text">
+              <h6>สร้างออเดอร์สำเร็จ</h6>
+              <span>ได้รหัส LRP-XXXXXX</span>
+            </div>
+          </div>
+          <div class="workflow-arrow">➔</div>
+          <div class="workflow-step">
+            <div class="workflow-num">2</div>
+            <div class="workflow-text">
+              <h6>คำนวณยอดเงิน</h6>
+              <span>เช่น 2 ใบ = 98.00 บาท (ใบละ 49฿)</span>
+            </div>
+          </div>
+          <div class="workflow-arrow">➔</div>
+          <div class="workflow-step active">
+            <div class="workflow-num">3</div>
+            <div class="workflow-text">
+              <h6>Dynamic PromptPay QR</h6>
+              <span>ล็อกยอดเงินใน QR ทันที</span>
+            </div>
+          </div>
+          <div class="workflow-arrow">➔</div>
+          <div class="workflow-step">
+            <div class="workflow-num">4</div>
+            <div class="workflow-text">
+              <h6>ผู้ซื้อแนบภาพสลิป</h6>
+              <span>บันทึกเข้า Supabase Storage 'slips'</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2col">
+          <!-- Left Column (Benefits & Bank) -->
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div class="card-box" style="padding: 14px;">
+              <h3 style="color: var(--neon-gold); font-size: 14.5px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                <span>🔒</span> Dynamic PromptPay QR: ล็อกยอดเป๊ะ
+              </h3>
+              <p style="font-size: 13px; line-height: 1.5; color: var(--text-body);">
+                ใช้ไลบรารี <code>promptpay-qr</code> ฝังยอดเงินจริง (เช่น 98.00 บาท) ลงในโค้ด ลูกค้าเปิดแอปธนาคารสแกนปุ๊บ ยอดจะขึ้นตรงเป๊ะทันที ไม่ต้องพิมพ์เอง
+              </p>
+            </div>
+
+            <div class="card-box" style="padding: 14px;">
+              <h3 style="color: #34D399; font-size: 14.5px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                <span>🏦</span> บัญชีกสิกรไทย (KBANK) ทางเลือกโอนตรง
+              </h3>
+              <p style="font-size: 13px; line-height: 1.5; color: var(--text-body);">
+                เลขที่ <strong>xxx-x-xxxxx-x</strong> (บัญชีทางการ งานลาบแรกพบ) พร้อมเลขอ้างอิง QR Reference: <code>000000000000000</code> ตรวจสอบได้แม่นยำ
+              </p>
+            </div>
+
+            <div class="card-box" style="padding: 14px;">
+              <h3 style="color: #60A5FA; font-size: 14.5px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                <span>⏱️</span> นับถอยหลัง 30 นาที & ระบบแบ่งจ่ายได้ (Split Payment)
+              </h3>
+              <p style="font-size: 13px; line-height: 1.5; color: var(--text-body);">
+                กระตุ้นการโอนในเวลา และรองรับกรณีเพื่อนโอนแยก 2 บัญชี แนบสลิป 2 ใบ ระบบจะรวมยอดสะสมให้อัตโนมัติจนครบ
+              </p>
+            </div>
+          </div>
+
+          <!-- Right Column (Checkout Mockup) -->
+          <div class="mockup-frame">
+            <div class="mockup-header-bar">
+              <div class="mockup-dots">
+                <div class="mockup-dot red"></div>
+                <div class="mockup-dot yellow"></div>
+                <div class="mockup-dot green"></div>
+              </div>
+              <div class="mockup-route">/checkout?order=LRP-2024-X91A</div>
+            </div>
+
+            <div style="background: var(--surface-1); border: 1px solid var(--border-hairline); border-radius: 12px; padding: 14px; text-align: center;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-family: var(--font-mono); font-size: 11.5px; color: var(--text-muted);">ORDER #LRP-2024-X91A</span>
+                <span class="status-badge warning" style="font-size: 11px;">⏳ เหลือเวลา 28:45 นาที</span>
+              </div>
+
+              <!-- QR Code Mockup Box -->
+              <div style="background: #fff; width: 150px; height: 150px; margin: 0 auto 8px; border-radius: 10px; padding: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);">
+                <div style="font-size: 10px; font-weight: 800; color: #00427A; margin-bottom: 2px;">พร้อมเพย์ PromptPay</div>
+                <svg width="90" height="90" viewBox="0 0 100 100" fill="#000">
+                  <rect x="0" y="0" width="30" height="30" fill="#000"/>
+                  <rect x="5" y="5" width="20" height="20" fill="#fff"/>
+                  <rect x="10" y="10" width="10" height="10" fill="#000"/>
+                  <rect x="70" y="0" width="30" height="30" fill="#000"/>
+                  <rect x="75" y="5" width="20" height="20" fill="#fff"/>
+                  <rect x="80" y="10" width="10" height="10" fill="#000"/>
+                  <rect x="0" y="70" width="30" height="30" fill="#000"/>
+                  <rect x="5" y="75" width="20" height="20" fill="#fff"/>
+                  <rect x="10" y="80" width="10" height="10" fill="#000"/>
+                  <rect x="40" y="20" width="10" height="10"/>
+                  <rect x="40" y="40" width="20" height="20"/>
+                  <rect x="70" y="50" width="10" height="20"/>
+                  <rect x="50" y="70" width="30" height="10"/>
+                  <rect x="40" y="85" width="10" height="10"/>
+                </svg>
+                <div style="font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: #111; margin-top: 2px;">98.00 THB (2 ใบ)</div>
+              </div>
+
+              <!-- Interactive Slip Box -->
+              <div id="demo-slip-dropzone" style="background: rgba(245, 158, 11, 0.08); border: 1px dashed rgba(245, 158, 11, 0.4); border-radius: 8px; padding: 10px; margin-bottom: 8px; cursor: pointer; transition: all 0.2s ease;">
+                <div id="demo-slip-text" style="font-size: 12px; color: var(--text-heading); font-weight: 600;">📎 คลิกเพื่อทดลองแนบสลิปโอนเงิน</div>
+                <div id="demo-slip-sub" style="font-size: 10.5px; color: var(--text-muted); margin-top: 2px;">จำลองการส่งภาพสลิปเข้าสู่ระบบ</div>
+              </div>
+
+              <div style="font-size: 11px; color: var(--text-muted);">
+                เมื่อแนบสลิปแล้ว ระบบจะส่งตรงถึงหน้าสตาฟทันที 🔔
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==============================================================
+           SLIDE 09: ฟีเจอร์ 3 - ระบบตรวจสลิป /admin (เสียงเตือน + ตรวจสลิปซ้ำ)
+           ============================================================== -->
+      <section class="slide-content-wrap" data-slide="9" data-title="ฟีเจอร์ 3: ระบบหลังบ้านตรวจสลิป (/admin)">
+        <div class="slide-tag-pill">
+          <span>🛡️</span>
+          <span>[FEATURE 03: ADMIN REVIEW]</span>
+        </div>
+        <h1 class="slide-title">ระบบตรวจสลิปของสตาฟ: <span class="highlight">แจ้งเตือนด้วยเสียง & ตรวจจับสลิปซ้ำ</span></h1>
+        <p class="slide-subtitle">ไม่ต้องนั่งเฝ้าจอทั้งคืน พร้อมระบบตรวจลายนิ้วมือดิจิทัลสกัดการโกง 100%</p>
+
+        <!-- Workflow Step Banner -->
+        <div class="workflow-strip">
+          <div class="workflow-step">
+            <div class="workflow-num">1</div>
+            <div class="workflow-text">
+              <h6>ลูกค้าแนบสลิป</h6>
+              <span>ส่งผ่านหน้า /checkout</span>
+            </div>
+          </div>
+          <div class="workflow-arrow">➔</div>
+          <div class="workflow-step active">
+            <div class="workflow-num">2</div>
+            <div class="workflow-text">
+              <h6>เสียงกริ่งดังเตือนสตาฟ</h6>
+              <span>Web Audio API Chime 🔔</span>
+            </div>
+          </div>
+          <div class="workflow-arrow">➔</div>
+          <div class="workflow-step">
+            <div class="workflow-num">3</div>
+            <div class="workflow-text">
+              <h6>ตรวจลายนิ้วมือสลิป</h6>
+              <span>SHA-256 Hash ตรวจซ้ำ</span>
+            </div>
+          </div>
+          <div class="workflow-arrow">➔</div>
+          <div class="workflow-step">
+            <div class="workflow-num">4</div>
+            <div class="workflow-text">
+              <h6>สตาฟกดอนุมัติ</h6>
+              <span>ออกตั๋ว QR & ส่งอีเมลทันที</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2col">
+          <!-- Left Column (Explanation) -->
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div class="card-box" style="padding: 14px;">
+              <h3 style="color: var(--neon-gold); font-size: 14.5px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                <span>🔔</span> เสียงแจ้งเตือนอัตโนมัติ (Web Audio API)
+              </h3>
+              <p style="font-size: 13px; line-height: 1.5; color: var(--text-body);">
+                สตาฟเปิดหน้าเว็บทิ้งไว้ พอมีลูกค้าส่งสลิปใหม่เข้ามา จะมีเสียงกริ่งความถี่คู่ (880Hz + 1320Hz) เตือนทันที ไม่ต้องกดรีเฟรชหน้าจอ
+              </p>
+            </div>
+
+            <div class="card-box" style="border-left: 4px solid var(--status-danger); padding: 14px;">
+              <h3 style="color: #F87171; font-size: 14.5px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                <span>🔍</span> ตรวจจับสลิปซ้ำด้วย SHA-256 Hash
+              </h3>
+              <p style="font-size: 13px; line-height: 1.5; color: var(--text-body);">
+                แปลงรูปสลิปเป็นลายนิ้วมือ 64 หลัก หากมีคนพยายามเอาสลิปเดิมมาส่งซ้ำ ระบบจะขึ้น 
+                <strong style="color: var(--status-danger);">แถบเตือนสีแดงทันที</strong> สตาฟรู้ได้ทันทีว่าอย่าเพิ่งอนุมัติ
+              </p>
+            </div>
+
+            <div class="card-box" style="padding: 14px;">
+              <h3 style="color: #34D399; font-size: 14.5px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                <span>🔒</span> Concurrency Lock (กันกดชนกัน)
+              </h3>
+              <p style="font-size: 13px; line-height: 1.5; color: var(--text-body);">
+                หากสตาฟ 2 คนเปิดดูพร้อมกันแล้วกดอนุมัติ ระบบจะยอมรับการกดของคนแรกคนเดียว ป้องกันการออกตั๋วเบิ้ล
+              </p>
+            </div>
+          </div>
+
+          <!-- Right Column (Admin Queue Mockup) -->
+          <div class="mockup-frame">
+            <div class="mockup-header-bar">
+              <div class="mockup-dots">
+                <div class="mockup-dot red"></div>
+                <div class="mockup-dot yellow"></div>
+                <div class="mockup-dot green"></div>
+              </div>
+              <div class="mockup-route">/admin/payments (Staff Dashboard)</div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <!-- Sound Test Button -->
+              <button id="demo-btn-sound" class="nav-btn" style="background: rgba(245, 158, 11, 0.15); border-color: var(--neon-gold); color: var(--neon-gold); justify-content: center; padding: 7px;">
+                <span>🔔 กดเพื่อทดสอบฟังเสียงกริ่ง (Web Audio API)</span>
+              </button>
+
+              <!-- Queue Item 1: Normal -->
+              <div id="demo-admin-item-1" style="background: var(--surface-1); border: 1px solid var(--border-hairline); border-radius: 8px; padding: 10px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <div style="font-size: 12.5px; font-weight: 700; color: #fff;">#LRP-8812 • นายสมชาย (2 ใบ)</div>
+                  <div style="font-family: var(--font-mono); font-size: 11px; color: #10B981;">ยอด 98.00฿ • สลิปใหม่ถูกต้อง</div>
+                </div>
+                <button id="demo-btn-approve-1" style="background: #10B981; color: #000; font-weight: 700; border: none; border-radius: 6px; padding: 5px 12px; font-size: 11.5px; cursor: pointer;">อนุมัติตั๋ว</button>
+              </div>
+
+              <!-- Queue Item 2: Duplicate Warning -->
+              <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid var(--status-danger); border-radius: 8px; padding: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                  <span style="font-size: 12px; font-weight: 700; color: #F87171;">⚠️ ตรวจพบสลิปซ้ำ (SHA-256 ซ้ำกับ LRP-7710)</span>
+                  <span class="status-badge danger" style="font-size: 10px;">สลิปซ้ำ 100%</span>
+                </div>
+                <div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-muted);">
+                  Hash: a3b819f...d71c (เคยอนุมัติแล้วเมื่อ 18:20 น.)
+                </div>
+                <div style="margin-top: 6px; display: flex; gap: 6px;">
+                  <button style="background: var(--surface-2); border: 1px solid var(--border-hairline); color: #fff; font-size: 11px; padding: 3px 10px; border-radius: 4px;">ดูรูปสลิป</button>
+                  <button style="background: #EF4444; color: #fff; border: none; font-size: 11px; padding: 3px 10px; border-radius: 4px; font-weight: 700;">ปฏิเสธสลิป</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==============================================================
+           SLIDE 10: ฟีเจอร์ 4 - สแกน QR หน้างาน รับ Wristband (/staff/scan)
+           ============================================================== -->
+      <section class="slide-content-wrap" data-slide="10" data-title="ฟีเจอร์ 4: สแกน QR หน้างาน รับ Wristband (/staff/scan)">
+        <div class="slide-tag-pill">
+          <span>🎫</span>
+          <span>[FEATURE 04: GATE CHECK-IN]</span>
+        </div>
+        <h1 class="slide-title">ระบบสแกนตั๋วหน้างาน: <span class="highlight">ตรวจสอบสิทธิ์ใน 1 วินาที & ป้องกันสแกนซ้ำ</span></h1>
+        <p class="slide-subtitle">สแกนผ่านเบราว์เซอร์มือถือด้วย html5-qrcode พร้อมกลไก Atomic Check-in สกัดการแคปจอส่งต่อ</p>
+
+        <!-- Workflow Step Banner -->
+        <div class="workflow-strip">
+          <div class="workflow-step">
+            <div class="workflow-num">1</div>
+            <div class="workflow-text">
+              <h6>ผู้ร่วมงานโชว์ตั๋ว QR</h6>
+              <span>เปิดจากเว็บหรืออีเมล</span>
+            </div>
+          </div>
+          <div class="workflow-arrow">➔</div>
+          <div class="workflow-step active">
+            <div class="workflow-num">2</div>
+            <div class="workflow-text">
+              <h6>สตาฟสแกนด้วยกล้องมือถือ</h6>
+              <span>สตรีมผ่านเบราว์เซอร์</span>
+            </div>
+          </div>
+          <div class="workflow-arrow">➔</div>
+          <div class="workflow-step">
+            <div class="workflow-num">3</div>
+            <div class="workflow-text">
+              <h6>Atomic Check-in</h6>
+              <span>ตัดสถานะในเสี้ยววินาที</span>
+            </div>
+          </div>
+          <div class="workflow-arrow">➔</div>
+          <div class="workflow-step">
+            <div class="workflow-num">4</div>
+            <div class="workflow-text">
+              <h6>สวมสายรัดข้อมือ</h6>
+              <span>เข้างานคอนเสิร์ตได้ทันที</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2col">
+          <!-- Left Column (Explanation) -->
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div class="card-box" style="padding: 14px;">
+              <h3 style="color: var(--neon-gold); font-size: 14.5px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                <span>📷</span> สแกนผ่านเบราว์เซอร์ไม่ต้องโหลดแอป
+              </h3>
+              <p style="font-size: 13px; line-height: 1.5; color: var(--text-body);">
+                สตาฟเปิดหน้า <code>/staff/scan</code> บน Safari หรือ Chrome กล้องหลังจะเปิดพร้อมสแกนทันที รองรับทั้งสภาพแสงสลัวของร้าน
+              </p>
+            </div>
+
+            <div class="card-box" style="padding: 14px;">
+              <h3 style="color: #10B981; font-size: 14.5px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                <span>⚡</span> ระบบเช็คอินครั้งเดียว (Atomic Check-in)
+              </h3>
+              <p style="font-size: 13px; line-height: 1.5; color: var(--text-body);">
+                เมื่อสแกนผ่าน ตั๋วใบนั้นจะถูกตัดสถานะเป็น 'เข้างานแล้ว' ทันทีในฐานข้อมูล หากมีคนแคปจอส่งต่อให้เพื่อนนำมาสแกนอีก ระบบจะขึ้นเตือนสีแดงทันที
+              </p>
+            </div>
+
+            <div class="card-box" style="padding: 14px;">
+              <h3 style="color: #60A5FA; font-size: 14.5px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                <span>🔎</span> ค้นหาสำรอง (/staff/search)
+              </h3>
+              <p style="font-size: 13px; line-height: 1.5; color: var(--text-body);">
+                กรณีจอมือถือลูกค้าแตกหรือแบตหมด สตาฟสามารถพิมพ์ค้นหาด้วยชื่อหรือเบอร์โทรเพื่อเช็คอินแทนได้
+              </p>
+            </div>
+          </div>
+
+          <!-- Right Column (Interactive Scanner Mockup) -->
+          <div class="mockup-frame">
+            <div class="mockup-header-bar">
+              <div class="mockup-dots">
+                <div class="mockup-dot red"></div>
+                <div class="mockup-dot yellow"></div>
+                <div class="mockup-dot green"></div>
+              </div>
+              <div class="mockup-route">/staff/scan (Camera Viewfinder)</div>
+            </div>
+
+            <!-- Viewfinder Area -->
+            <div id="demo-viewfinder" style="background: rgba(0, 0, 0, 0.8); border: 2px dashed rgba(245, 158, 11, 0.4); border-radius: 12px; height: 160px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; transition: all 0.3s ease;">
+              <div style="position: absolute; width: 100%; height: 2px; background: var(--neon-gold); animation: laserScan 2s infinite linear; box-shadow: 0 0 10px var(--neon-gold);"></div>
+              <div id="demo-viewfinder-status" style="text-align: center; z-index: 2; padding: 10px;">
+                <span style="font-size: 26px;">📷</span><br>
+                <span style="color: var(--text-muted); font-size: 12px;">เล็งกล้องไปที่ QR Code ตั๋ว</span>
+              </div>
+            </div>
+
+            <!-- Simulation Buttons -->
+            <div style="display: flex; gap: 8px; margin-top: 10px;">
+              <button id="demo-btn-scan-pass" style="flex: 1; background: rgba(16, 185, 129, 0.2); border: 1px solid var(--status-success); color: var(--status-success); font-weight: 700; padding: 8px; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                🟢 จำลอง: สแกนผ่าน
+              </button>
+              <button id="demo-btn-scan-fail" style="flex: 1; background: rgba(239, 68, 68, 0.2); border: 1px solid var(--status-danger); color: var(--status-danger); font-weight: 700; padding: 8px; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                🔴 จำลอง: สแกนซ้ำ
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==============================================================
+           SLIDE 11: ฟีเจอร์ 5 - สวิตช์คุมคนล้นร้าน (Venue Full Killswitch)
+           ============================================================== -->
+      <section class="slide-content-wrap" data-slide="11" data-title="ฟีเจอร์ 5: สวิตช์คุมคนล้นร้าน (Killswitch)">
+        <div class="slide-tag-pill">
+          <span>🛑</span>
+          <span>[FEATURE 05: CROWD CONTROL]</span>
+        </div>
+        <h1 class="slide-title">สวิตช์คุมคนล้นร้าน: <span class="highlight">กดปุ่มเดียว ปิดรับออเดอร์ทันทีเมื่อโต๊ะเต็ม</span></h1>
+        <p class="slide-subtitle">สวิตช์ฉุกเฉิน venue_status.is_full ควบคุมความปลอดภัยและความจุของร้านใน 1 คลิก</p>
+
+        <div class="grid-2col">
+          <!-- Left Column (Explanation) -->
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div class="card-box" style="padding: 14px;">
+              <h3 style="color: var(--neon-gold); font-size: 14.5px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                <span>🏮</span> ปัญหาจริงหน้างาน: ร้านอาหารพื้นที่จำกัด
+              </h3>
+              <p style="font-size: 13px; line-height: 1.5; color: var(--text-body);">
+                หากคนแห่ซื้อบัตรออนไลน์เข้ามาเรื่อยๆ แต่พื้นที่ในร้านเต็ม คนที่มาถึงจะไม่มีที่ยืน เกิดความแออัดและเสียความรู้สึก
+              </p>
+            </div>
+
+            <div class="card-box" style="border-left: 4px solid var(--status-danger); padding: 14px;">
+              <h3 style="color: #F87171; font-size: 14.5px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                <span>⚡</span> สวิตช์ตัดการทำงาน (Emergency Killswitch)
+              </h3>
+              <p style="font-size: 13px; line-height: 1.5; color: var(--text-body);">
+                เชื่อมต่อตาราง <code>venue_status.is_full</code> สตาฟแตะปุ่มนี้ครั้งเดียว หน้าเว็บจะหยุดรับออเดอร์ใหม่ทันที
+              </p>
+            </div>
+
+            <div class="card-box" style="padding: 14px;">
+              <h3 style="color: #34D399; font-size: 14.5px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                <span>🎟️</span> ไม่กระทบคนที่มีตั๋วแล้ว
+              </h3>
+              <p style="font-size: 13px; line-height: 1.5; color: var(--text-body);">
+                คนที่มีตั๋ว QR Code อยู่แล้วยังสแกนเข้างานได้ตามปกติ และเมื่อมีคนเช็คบิลออกจากร้าน สตาฟก็กดเปิดขายต่อได้ทันที
+              </p>
+            </div>
+          </div>
+
+          <!-- Right Column (Interactive Killswitch Mockup) -->
+          <div class="mockup-frame">
+            <div class="mockup-header-bar">
+              <div class="mockup-dots">
+                <div class="mockup-dot red"></div>
+                <div class="mockup-dot yellow"></div>
+                <div class="mockup-dot green"></div>
+              </div>
+              <div class="mockup-route">/admin/status (Killswitch Control)</div>
+            </div>
+
+            <!-- Killswitch Toggle Widget -->
+            <div id="demo-killswitch-card" style="background: var(--surface-1); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 12px; padding: 14px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s ease;">
+              <div>
+                <div id="demo-killswitch-title" style="font-size: 14px; font-weight: 700; color: #fff;">สวิตช์: ร้านเต็มชั่วคราว (ON)</div>
+                <div id="demo-killswitch-status" style="font-size: 11.5px; color: var(--status-danger);">กำลังทำงาน (ปิดรับออเดอร์ใหม่)</div>
+              </div>
+              <div id="demo-killswitch-track" style="width: 48px; height: 26px; border-radius: 13px; background: var(--status-danger); padding: 3px; display: flex; justify-content: flex-end; box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);">
+                <div style="width: 20px; height: 20px; border-radius: 50%; background: #fff;"></div>
+              </div>
+            </div>
+
+            <!-- Live Preview of Buyer's Screen -->
+            <div id="demo-store-preview" style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 10px; padding: 12px; text-align: center;">
+              <div id="demo-store-icon" style="font-size: 26px; margin-bottom: 4px;">🏮</div>
+              <div id="demo-store-title" style="font-size: 13.5px; font-weight: 700; color: var(--neon-gold); margin-bottom: 4px;">
+                ขณะนี้โต๊ะในร้านเต็มชั่วคราว
+              </div>
+              <div id="demo-store-desc" style="font-size: 11.5px; color: var(--text-body); margin-bottom: 8px;">
+                เพื่อความปลอดภัยและพื้นที่ในร้าน ระบบหยุดรับออเดอร์ใหม่ชั่วคราว โปรดรอสักครู่เมื่อมีลูกค้าเช็คบิล
+              </div>
+              <button id="demo-store-btn" disabled style="background: #374151; color: #9CA3AF; border: none; padding: 6px 14px; border-radius: 6px; font-size: 11.5px; cursor: not-allowed;">
+                ปุ่มสั่งซื้อบัตรถูกปิดชั่วคราว
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==============================================================
+           SLIDE 12: ฟีเจอร์ 6 - ระบบขายบัตรหน้างาน (Walk-up Sales)
+           ============================================================== -->
+      <section class="slide-content-wrap" data-slide="12" data-title="ฟีเจอร์ 6: ระบบขายบัตรหน้าร้าน (Walk-up Sales)">
+        <div class="slide-tag-pill">
+          <span>🏪</span>
+          <span>[FEATURE 06: WALK-UP DOOR SALES]</span>
+        </div>
+        <h1 class="slide-title">ระบบขายบัตรหน้าร้าน: <span class="highlight">รองรับทั้งเงินสดและพร้อมเพย์ พร้อมเช็คอินในคลิกเดียว</span></h1>
+        <p class="slide-subtitle">แก้โจทย์คนเดินวอล์กอินมาซื้อหน้างาน ออกตั๋ว + อนุมัติ + เช็คอินมอบ Wristband จบในคลิกเดียว</p>
+
+        <div class="grid-2col">
+          <!-- Left Column (Explanation) -->
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div class="card-box" style="padding: 14px;">
+              <h3 style="color: var(--neon-gold); font-size: 14.5px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                <span>🚶</span> ออกแบบมาเพื่อคนเดินวอล์กอิน
+              </h3>
+              <p style="font-size: 13px; line-height: 1.5; color: var(--text-body);">
+                ในงานจริงมีคนไม่ได้ซื้อล่วงหน้า แต่เดินมาซื้อหน้างาน สตาฟเปิดหน้า <code>/staff/walk-up</code> ขายให้ได้ทันทีใน 5 วินาที
+              </p>
+            </div>
+
+            <div class="card-box" style="padding: 14px;">
+              <h3 style="color: #34D399; font-size: 14.5px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                <span>⚡</span> One-Click: ออกตั๋ว + อนุมัติ + เช็คอิน
+              </h3>
+              <p style="font-size: 13px; line-height: 1.5; color: var(--text-body);">
+                ระบบบันทึกเงินและตัดเป็นตั๋วเช็คอินทันที สตาฟสวมสายรัดข้อมือ Wristband ให้ลูกค้าเดินเข้าร้านได้เลย
+              </p>
+            </div>
+
+            <div class="card-box" style="padding: 14px;">
+              <h3 style="color: #60A5FA; font-size: 14.5px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                <span>📊</span> แยกประเภทบัญชีเงินสด vs โอนออนไลน์
+              </h3>
+              <p style="font-size: 13px; line-height: 1.5; color: var(--text-body);">
+                ยอดเงินถูกนำไปรวมในแดชบอร์ดสรุปรายได้แบบแยกประเภท เพื่อให้สตาฟนับเงินสดส่งทางร้านได้ตรงเป๊ะ
+              </p>
+            </div>
+          </div>
+
+          <!-- Right Column (Interactive POS Mockup) -->
+          <div class="mockup-frame">
+            <div class="mockup-header-bar">
+              <div class="mockup-dots">
+                <div class="mockup-dot red"></div>
+                <div class="mockup-dot yellow"></div>
+                <div class="mockup-dot green"></div>
+              </div>
+              <div class="mockup-route">/staff/walk-up (Door POS)</div>
+            </div>
+
+            <div style="background: var(--surface-1); border: 1px solid var(--border-hairline); border-radius: 12px; padding: 14px;">
+              <div style="font-size: 12.5px; font-weight: 700; color: var(--text-heading); margin-bottom: 10px;">
+                เลือกจำนวนบัตร (ใบละ 49 บาท):
+              </div>
+
+              <!-- Quick Quantity Buttons -->
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px;">
+                <button class="walkup-qty-btn" data-qty="1" style="background: var(--surface-2); border: 1px solid var(--border-hairline); color: #fff; padding: 8px; border-radius: 8px; cursor: pointer; font-size: 13px;">1 ใบ (49฿)</button>
+                <button class="walkup-qty-btn active" data-qty="2" style="background: var(--neon-gold); border: 1px solid var(--neon-gold); color: #000; font-weight: 700; padding: 8px; border-radius: 8px; cursor: pointer; font-size: 13px;">2 ใบ (98฿)</button>
+                <button class="walkup-qty-btn" data-qty="3" style="background: var(--surface-2); border: 1px solid var(--border-hairline); color: #fff; padding: 8px; border-radius: 8px; cursor: pointer; font-size: 13px;">3 ใบ (147฿)</button>
+              </div>
+
+              <!-- Payment Method Selector -->
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+                <div id="demo-pay-cash" style="background: rgba(245, 158, 11, 0.1); border: 2px solid var(--neon-gold); border-radius: 8px; padding: 8px; text-align: center; cursor: pointer;">
+                  <div style="font-size: 16px;">💵</div>
+                  <div style="font-size: 11.5px; font-weight: 700; color: var(--neon-gold);">เงินสดหน้าร้าน</div>
+                </div>
+                <div id="demo-pay-qr" style="background: var(--surface-2); border: 1px solid var(--border-hairline); border-radius: 8px; padding: 8px; text-align: center; cursor: pointer;">
+                  <div style="font-size: 16px;">📱</div>
+                  <div style="font-size: 11.5px; color: var(--text-muted);">พร้อมเพย์หน้าร้าน</div>
+                </div>
+              </div>
+
+              <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 13px;">
+                <span style="color: var(--text-muted);">ยอดเงินที่รับ:</span>
+                <span id="demo-walkup-total" style="font-family: var(--font-mono); font-weight: 800; color: var(--neon-gold); font-size: 16px;">98.00 บาท</span>
+              </div>
+
+              <button id="demo-btn-walkup-checkout" class="nav-btn primary" style="width: 100%; justify-content: center; padding: 10px;">
+                <span>ออกบัตร & เช็คอินมอบ Wristband ทันที</span>
+              </button>
+
+              <div id="demo-walkup-feedback" style="display: none; margin-top: 10px; background: rgba(16, 185, 129, 0.15); border: 1px solid var(--status-success); color: var(--status-success); border-radius: 8px; padding: 8px; font-size: 12px; text-align: center;">
+                ✓ สำเร็จ! บันทึกยอด 98.00฿ & เช็คอินมอบ Wristband เรียบร้อย
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==============================================================
+           SLIDE 13: แผนภาพเชื่อมโยงทั้งระบบ (End-to-End Diagram)
+           ============================================================== -->
+      <section class="slide-content-wrap" data-slide="13" data-title="แผนภาพเชื่อมโยงทั้งระบบ (End-to-End Diagram)">
+        <div class="slide-tag-pill">
+          <span>🗺️</span>
+          <span>[ARCHITECTURE OVERVIEW & DATA FLOW]</span>
+        </div>
+        <h1 class="slide-title">สรุปภาพใหญ่: <span class="highlight">ทุกเครื่องมือและทุกฟีเจอร์คุยกันอย่างไรตั้งแต่ต้นจนจบ?</span></h1>
+        <p class="slide-subtitle">แผนผังแสดงการไหลของข้อมูล (Data Flow) จากผู้ซื้อ สู่ฐานข้อมูลคลาวด์ บริการอีเมล และสตาฟหน้างาน</p>
+
+        <!-- Visual Architecture Canvas -->
+        <div class="grid-3col" style="align-items: stretch; margin-top: 4px;">
+          <!-- Node 1: Buyer -->
+          <div class="card-box" style="border-top: 3px solid #60A5FA;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 22px;">📱</span>
+                <div>
+                  <h4 style="color: #60A5FA; font-size: 15px;">1. ฝั่งผู้ซื้อ (Buyer)</h4>
+                  <span style="font-size: 11px; color: var(--text-muted);">มือถือลูกค้าทั่วไป (หน้าบ้าน)</span>
+                </div>
+              </div>
+              <span class="status-badge" style="background: rgba(96, 165, 250, 0.15); color: #60A5FA; font-size: 11px;">Next.js Client</span>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12.5px;">
+              <div style="background: var(--surface-1); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-hairline);">
+                <strong style="color: #fff;">/buy:</strong> เลือกจำนวนตั๋ว 49฿/ใบ & ตรวจเบอร์โทร
+              </div>
+              <div style="text-align: center; color: var(--neon-gold); font-size: 11px; font-weight: 700;">➔ ส่งออเดอร์</div>
+              <div style="background: var(--surface-1); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-hairline);">
+                <strong style="color: #fff;">/checkout:</strong> สแกน Dynamic QR & แนบสลิป
+              </div>
+              <div style="text-align: center; color: var(--neon-gold); font-size: 11px; font-weight: 700;">➔ ได้รับอนุมัติ</div>
+              <div style="background: var(--surface-1); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-hairline);">
+                <strong style="color: #fff;">/orders:</strong> ถือตั๋ว QR Code รอเข้างาน
+              </div>
+            </div>
+          </div>
+
+          <!-- Node 2: Supabase Database & Storage -->
+          <div class="card-box highlight-glow" style="border-top: 3px solid var(--status-success); background: rgba(22, 25, 34, 0.95);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 22px;">🗄️</span>
+                <div>
+                  <h4 style="color: var(--status-success); font-size: 15px;">2. ศูนย์กลาง SUPABASE</h4>
+                  <span style="font-size: 11px; color: var(--text-muted);">PostgreSQL & Storage Bucket</span>
+                </div>
+              </div>
+              <span class="status-badge success" style="font-size: 11px;">Realtime Hub</span>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 6px; font-size: 11.5px; font-family: var(--font-mono);">
+              <div style="background: #0D0E12; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border-hairline);">
+                📁 <strong>orders:</strong> คำสั่งซื้อ & ยอดเงิน
+              </div>
+              <div style="background: #0D0E12; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border-hairline);">
+                📁 <strong>payments:</strong> รูปสลิป & SHA-256 Hash
+              </div>
+              <div style="background: #0D0E12; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border-hairline);">
+                📁 <strong>tickets:</strong> รหัสสุ่ม 32-Hex & Check-in
+              </div>
+              <div style="background: #0D0E12; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border-hairline);">
+                📁 <strong>venue_status:</strong> สวิตช์ร้านเต็ม Killswitch
+              </div>
+              <div style="background: #0D0E12; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border-hairline);">
+                🪣 <strong>Bucket 'slips':</strong> ที่เก็บไฟล์รูปภาพ
+              </div>
+            </div>
+          </div>
+
+          <!-- Node 3: Staff Operations & Gmail -->
+          <div class="card-box" style="border-top: 3px solid var(--brand-red);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 22px;">🛡️</span>
+                <div>
+                  <h4 style="color: #F87171; font-size: 15px;">3. สตาฟ & อีเมล (Staff)</h4>
+                  <span style="font-size: 11px; color: var(--text-muted);">ทีมงานสตาฟ & Gmail SMTP</span>
+                </div>
+              </div>
+              <span class="status-badge danger" style="font-size: 11px;">Operations</span>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12.5px;">
+              <div style="background: var(--surface-1); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-hairline);">
+                <strong style="color: #fff;">/admin:</strong> ฟังเสียงเตือนกริ่ง & ตรวจสลิปซ้ำ
+              </div>
+              <div style="text-align: center; color: var(--status-success); font-size: 11px; font-weight: 700;">➔ ตรวจตั๋วหน้างาน</div>
+              <div style="background: var(--surface-1); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-hairline);">
+                <strong style="color: #fff;">/staff/scan:</strong> เปิดกล้องสแกน & แจก Wristband
+              </div>
+              <div style="text-align: center; color: var(--neon-gold); font-size: 11px; font-weight: 700;">➔ ขายหน้าร้าน</div>
+              <div style="background: var(--surface-1); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-hairline);">
+                <strong style="color: #fff;">Gmail SMTP:</strong> ส่งตั๋ว Inline CID เข้ากล่องจดหมาย
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==============================================================
+           SLIDE 14: สรุปบทเรียนและสิ่งที่เพื่อนๆ นำไปต่อยอดได้
+           ============================================================== -->
+      <section class="slide-content-wrap" data-slide="14" data-title="สรุปบทเรียนและสิ่งที่เพื่อนๆ นำไปต่อยอดได้">
+        <div class="slide-tag-pill">
+          <span>🎓</span>
+          <span>[SUMMARY & TAKEAWAYS]</span>
+        </div>
+        <h1 class="slide-title">บทเรียนสำคัญจาก <span class="highlight">การทำเว็บไซต์ระบบอีเวนต์จริง</span></h1>
+        <p class="slide-subtitle">3 สิ่งที่พวกเราได้เรียนรู้ และเพื่อนๆ สามารถนำไปประยุกต์ใช้ในการสร้างโปรเจกต์ของตัวเองได้</p>
+
+        <div class="grid-3col" style="margin-bottom: 16px;">
+          <!-- Takeaway 1 -->
+          <div class="takeaway-card">
+            <div class="takeaway-icon">📱</div>
+            <div class="takeaway-title">1. Mobile-First และบริบทจริง</div>
+            <p class="takeaway-desc">
+              ผู้ใช้งาน 100% อยู่บนมือถือในที่แสงน้อยและเสียงดัง การออกแบบต้องปุ่มใหญ่ ตัวหนังสือคมชัด สีคอนทราสต์สูง ไม่ต้องพึ่งพาการติดตั้งแอป
+            </p>
+          </div>
+
+          <!-- Takeaway 2 -->
+          <div class="takeaway-card" style="border-top-color: #EF4444;">
+            <div class="takeaway-icon">🛡️</div>
+            <div class="takeaway-title">2. ระบบความปลอดภัย & ป้องกันการโกง</div>
+            <p class="takeaway-desc">
+              การทำเว็บธุรกรรมต้องคิดเผื่อคนส่งสลิปเดิม หรือแคปภาพตั๋วส่งต่อ การใช้ <strong>SHA-256</strong> ตรวจสลิปซ้ำ และ <strong>Atomic Check-in</strong> ช่วยสกัดปัญหาทุจริตได้ 100%
+            </p>
+          </div>
+
+          <!-- Takeaway 3 -->
+          <div class="takeaway-card" style="border-top-color: #10B981;">
+            <div class="takeaway-icon">⚙️</div>
+            <div class="takeaway-title">3. ความยืดหยุ่นรองรับหน้างานจริง</div>
+            <p class="takeaway-desc">
+              หน้างานมีตัวแปรไม่คาดคิดเสมอ การมีสวิตช์ <strong>"ร้านเต็มชั่วคราว (Killswitch)"</strong> และระบบขายเงินสดหน้าร้าน ช่วยให้ทีมงานแก้ปัญหาเฉพาะหน้าได้อย่างราบรื่น
+            </p>
+          </div>
+        </div>
+
+        <!-- Closing Callout with Real Event Metrics -->
+        <div class="card-box" style="background: radial-gradient(circle at center, rgba(143, 29, 45, 0.3) 0%, rgba(22, 25, 34, 0.95) 100%); border-color: rgba(245, 158, 11, 0.5); text-align: center; padding: 18px;">
+          <h3 style="color: var(--neon-gold); font-size: 16px; margin-bottom: 6px;">
+            "การทำเว็บที่ดี ไม่ใช่แค่หน้าตาดูสวย แต่คือการคิดเผื่อปัญหาหน้างานจริง"
+          </h3>
+          <p style="color: var(--text-body); font-size: 13px;">
+            หวังว่าแนวคิดและสถาปัตยกรรมของเว็บไซต์งานลาบแรกพบนี้ จะช่วยให้เพื่อนๆ เห็นภาพและนำไปต่อยอดได้ครับ! ขอบคุณครับ 🙏
+          </p>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Presentation Footer Controls -->
+  <footer class="presentation-footer">
+    <div class="footer-left">
+      <div id="slide-dots-container" class="slide-dots-container"></div>
+      <div id="footer-current-title" class="footer-current-title">
+        หน้าปก: เบื้องหลังระบบลาบแรกพบ
+      </div>
+    </div>
+
+    <div class="footer-nav-buttons">
+      <button id="btn-prev" class="nav-btn" title="สไลด์ก่อนหน้า (Arrow Left)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+        <span>ก่อนหน้า</span>
+      </button>
+
+      <button id="btn-next" class="nav-btn primary" title="สไลด์ถัดไป (Arrow Right / Spacebar)">
+        <span>ถัดไป</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+  </footer>
+
+  <!-- Speaker Notes Collapsible Drawer -->
+  <aside id="speaker-notes-drawer" class="speaker-notes-drawer">
+    <div class="notes-drawer-header">
+      <div class="notes-title-group">
+        <span class="notes-tag">SPEAKER NOTES</span>
+        <span id="notes-slide-title" class="notes-heading">บทพูดสไลด์ 01</span>
+        <div class="notes-tab-pills">
+          <button id="btn-tab-speech" class="notes-tab-pill active" title="สลับเป็นบทพูดบรรยาย">🎙️ บทพูดบรรยาย</button>
+          <button id="btn-tab-grill" class="notes-tab-pill" title="สลับเป็นแนวทางการตอบข้อซักถามเจาะลึก">🛡️ Grill-Me Q&A</button>
+        </div>
+      </div>
+      <div class="notes-tools">
+        <button id="btn-notes-font-minus" class="notes-tool-btn" title="ลดขนาดตัวอักษร">A-</button>
+        <button id="btn-notes-font-plus" class="notes-tool-btn" title="เพิ่มขนาดตัวอักษร">A+</button>
+        <button id="btn-copy-notes" class="notes-tool-btn" title="คัดลอกบทพูด">📋 คัดลอก</button>
+        <button id="btn-close-notes" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; padding: 2px 6px;" title="ปิดบทพูด">
+          ✕
+        </button>
+      </div>
+    </div>
+    <div id="notes-content" class="notes-drawer-body">
+      <!-- Dynamic speaker note content injected here -->
+    </div>
+  </aside>
+
+  <!-- Slide Jump Grid Modal -->
+  <div id="grid-modal" class="grid-modal-overlay">
+    <div class="grid-modal-card">
+      <div class="grid-modal-header">
+        <div class="grid-modal-title">สารบัญสไลด์ทั้งหมด (14 สไลด์)</div>
+        <button id="btn-close-modal" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 20px;">✕</button>
+      </div>
+      <div id="grid-modal-list" class="grid-modal-list">
+        <!-- Generated by JavaScript -->
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Shortcuts Help Modal -->
+  <div id="shortcuts-modal" class="grid-modal-overlay">
+    <div class="grid-modal-card" style="max-width: 620px;">
+      <div class="grid-modal-header">
+        <div class="grid-modal-title" style="display:flex;align-items:center;gap:8px;">
+          <span>⌨️</span> <span>คีย์ลัดสำหรับควบคุมการนำเสนอ (Keyboard Shortcuts)</span>
+        </div>
+        <button id="btn-close-shortcuts" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 20px;">✕</button>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px; font-size: 13px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--surface-2); border-radius: 8px; border: 1px solid var(--border-hairline);">
+          <span>สไลด์ถัดไป</span>
+          <div><span class="kbd-badge">→</span> <span class="kbd-badge">Space</span> <span class="kbd-badge">PgDn</span></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--surface-2); border-radius: 8px; border: 1px solid var(--border-hairline);">
+          <span>สไลด์ก่อนหน้า</span>
+          <div><span class="kbd-badge">←</span> <span class="kbd-badge">PgUp</span></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--surface-2); border-radius: 8px; border: 1px solid var(--border-hairline);">
+          <span>หน้าแรกสุด / หน้าสุดท้าย</span>
+          <div><span class="kbd-badge">Home</span> <span class="kbd-badge">End</span></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--surface-2); border-radius: 8px; border: 1px solid var(--border-hairline);">
+          <span>เปิด/ปิด บทพูดผู้บรรยาย (Speaker Notes)</span>
+          <div><span class="kbd-badge">N</span></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--surface-2); border-radius: 8px; border: 1px solid var(--border-hairline);">
+          <span>เปิดสารบัญสไลด์ทั้งหมด (Slide Grid / Menu)</span>
+          <div><span class="kbd-badge">G</span> <span class="kbd-badge">M</span></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--surface-2); border-radius: 8px; border: 1px solid var(--border-hairline);">
+          <span>สลับโหมดเต็มหน้าจอ (Fullscreen)</span>
+          <div><span class="kbd-badge">F</span></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--surface-2); border-radius: 8px; border: 1px solid var(--border-hairline);">
+          <span>เปิดหน้าต่างคีย์ลัดนี้</span>
+          <div><span class="kbd-badge">?</span> <span class="kbd-badge">/</span></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--surface-2); border-radius: 8px; border: 1px solid var(--border-hairline);">
+          <span>ปิดหน้าต่าง Modal / ปิดบทพูด</span>
+          <div><span class="kbd-badge">Esc</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast-popup" class="toast-popup">✓ คัดลอกสำเร็จ</div>
+
+  <!-- ==============================================================
+       7. JAVASCRIPT: INTERACTION & PRESENTATION LOGIC
+       ============================================================== -->
+  <script>
+    (function() {
+      // 14 Slide Speaker Notes Data directly from PRESENTATION_SLIDES.md
+      const speakerNotes = [
+        {
+          slide: 1,
+          title: "สไลด์ที่ 01: หน้าปกโปรเจกต์ (Introduction)",
+          text: `<blockquote>"สวัสดีครับเพื่อนๆ และอาจารย์ วันนี้พวกเราจะมาแกะกล่องเบื้องหลังการสร้าง <strong>เว็บไซต์ระบบจำหน่ายบัตรและเช็คอินงานลาบแรกพบ</strong> ให้ดูกันครับ งานนี้จัดขึ้นที่ร้านลาบก้อยซอยนานา หลัง มข. ซึ่งแต่ก่อนเวลาจัดคอนเสิร์ต คนจัดงานต้องคอยตอบแชท ตรวจสลิปทีละใบ และเอารายชื่อมาติ๊กสมุดหน้าประตู ทำให้หน้างานวุ่นวายมาก พวกเราเลยสร้างเว็บไซต์นี้ขึ้นมาเพื่อให้ผู้ซื้อสามารถจองบัตร จ่ายเงิน และสตาฟสามารถสแกนตั๋วผ่านมือถือได้ 100% โดยไม่ต้องโหลดแอปเพิ่มเลยครับ"</blockquote>
+          <div class="talking-points">
+            <strong>💡 จุดเน้นสำหรับผู้บรรยาย:</strong><br>
+            • แนะนำบริบท: ร้านอาหารอีสานดนตรีสด จัดคอนเสิร์ตจริง 2 ครั้ง<br>
+            • ตั๋วราคาเข้าถึงง่ายเพียง 49 บาท / ใบ<br>
+            • สถิติจริง: ขายตั๋ว 51 ใบ เช็คอิน 96.1% สกัดสลิปซ้ำ 100%
+          </div>`,
+          grillMe: {
+            q: "ทำไมต้องเขียนเว็บไซต์ระบบตั๋วขึ้นมาเอง? ทำไมไม่ใช้ Google Form + LINE OA หรือแพลตฟอร์มสำเร็จรูปอย่าง Eventpop / Ticketmelon?",
+            a: "Google Form มีปัญหาใหญ่ 3 ด้าน: (1) ผู้ซื้อต้องพิมพ์ยอดเงินเองและแนบสลิปที่แอดมินต้องคอยไล่ตรวจใน Drive เสี่ยง Human Error และตอบแชทไม่ทัน (2) แพลตฟอร์มสำเร็จรูปหักหัวคิว 5-10% ต่อตั๋ว สำหรับตั๋วราคา 49 บาท รายได้จะถูกหักไปมาก และเงินไม่ได้เข้าบัญชีร้านทันที (3) แพลตฟอร์มภายนอกไม่มี Dynamic Amount Locking, Realtime Check-in และ Emergency Killswitch ที่ปรับแต่งให้เข้ากับความจุของร้านอาหารจริงได้ การสร้างเองทำให้เงินเข้าบัญชีผู้จัดงานตรง 100% ควบคุมข้อมูลและความปลอดภัยได้เบ็ดเสร็จ"
+          }
+        },
+        {
+          slide: 2,
+          title: "สไลด์ที่ 02: เครื่องมือที่ใช้สร้างเว็บ (Core Tech Stack)",
+          text: `<blockquote>"ก่อนที่เราจะเจาะลึกฟีเจอร์ เรามาดูเครื่องมือหลัก 6 ตัวที่พวกเราเลือกใช้กันครับ:<br>
+          • ตัวแรกคือ <strong>Next.js 14</strong> เป็นโครงสร้างเว็บหลักที่รวมหน้าเว็บและเซิร์ฟเวอร์ไว้ในที่เดียว โหลดไวมาก<br>
+          • หน้าตาเว็บเราใช้ <strong>Tailwind CSS</strong> คุมโทนสีดาร์กโหมดนีออน ให้บรรยากาศไนท์ไลฟ์และกดง่ายด้วยมือเดียว<br>
+          • ดาต้าเบสเราใช้ <strong>Supabase</strong> ซึ่งเป็น PostgreSQL บนคลาวด์ พร้อมระบบ Realtime<br>
+          • และมีโมดูลเฉพาะทางอีก 3 ตัว คือ <strong>PromptPay QR</strong> สำหรับสร้างคิวอาร์โค้ดล็อกยอด, <strong>HTML5 Scanner</strong> สำหรับเปิดกล้องมือถือสแกนตั๋ว, และ <strong>Node Crypto</strong> สำหรับสุ่มตั๋ว 32 หลักและ SHA-256 ตรวจจับสลิปซ้ำครับ"</blockquote>
+          <div class="talking-points">
+            <strong>💡 จุดเน้นสำหรับผู้บรรยาย:</strong><br>
+            • อธิบายเหตุผลที่เลือก Next.js 14 App Router (Serverless Functions)<br>
+            • ชูจุดเด่นของ Supabase Realtime ที่ทำให้สตาฟไม่ต้องกดรีเฟรชหน้าจอ<br>
+            • เกริ่นนำ 3 โมดูลความปลอดภัย: PromptPay, HTML5 Camera, SHA-256
+          </div>`,
+          grillMe: {
+            q: "ทำไมถึงเลือก Next.js 14 App Router + Tailwind CSS แทนที่จะใช้ SPA แบบ Vite + React ธรรมดา?",
+            a: "เพราะระบบนี้ต้องมีทั้ง Frontend (หน้าซื้อตั๋ว, กล้องสแกน) และ Backend (Serverless API Routes, คำนวณ QR, Crypto Token, ส่งอีเมล) ใน Repo เดียวกัน Next.js 14 App Router มี Server Actions และ Route Handlers ช่วยปกป้องคีย์ความลับอย่าง SUPABASE_SERVICE_ROLE_KEY และ SMTP_PASS ไม่ให้หลุดไปที่ฝั่งไคลเอนต์ อีกทั้งแคชหน้าแรกบน Edge CDN โหลดไวใน 40ms บนมือถือ ส่วน Tailwind CSS ช่วยสร้าง Atomic CSS ขนาดกะทัดรัด คุมโทน Dark Mode Neon Nightlife ตาม DESIGN.md ได้อย่างไร้รอยต่อ"
+          }
+        },
+        {
+          slide: 3,
+          title: "สไลด์ที่ 03: การ Push ขึ้นเป็น Website (Deployment & CI/CD)",
+          text: `<blockquote>"สไลด์นี้จะตอบคำถามว่า 'เราเอาเว็บขึ้นไปอยู่บนอินเทอร์เน็ตจริงๆ ได้อย่างไร' ครับ เริ่มต้นจากพวกเราเขียนโค้ดเสร็จ ก็จะ push ขึ้น <strong>GitHub</strong> พอดันโค้ดปุ๊บ ระบบของ <strong>Vercel</strong> จะดึงโค้ดไป Build และ Deploy ให้อัตโนมัติทันที เว็บไซต์ของเราจึงออนไลน์ได้ตลอดเวลาแบบไม่มีวันล่ม โดยระบบหลังบ้านจะคุยกับ <strong>Supabase Cloud</strong> เพื่ออ่านเขียนข้อมูลคำสั่งซื้อ และรูปภาพสลิปทั้งหมดจะถูกเก็บแยกไว้ใน Supabase Storage Bucket ชื่อ 'slips' อย่างปลอดภัย และควบคุมการเข้าถึงด้วย 6 Environment Variables ครับ"</blockquote>
+          <div class="talking-points">
+            <strong>💡 จุดเน้นสำหรับผู้บรรยาย:</strong><br>
+            • อธิบายขั้นตอน CI/CD: Push Code ➔ Vercel Auto Build ➔ Global Edge CDN ➔ Supabase<br>
+            • ชี้แจงการจัดการ 6 Environment Variables: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SMTP_USER, SMTP_PASS, PROMPTPAY_ID
+          </div>`,
+          grillMe: {
+            q: "เมื่อเปิดขายตั๋วแล้วคนแห่เข้าพร้อมกัน Serverless Functions บน Vercel จะเจอปัญหา Cold Start หรือไม่ และสถาปัตยกรรมคลาวด์แยกสิทธิ์อย่างไร?",
+            a: "Vercel Edge CDN เสิร์ฟหน้าเว็บแบบ Static Cache ทันทีโดยไม่มี Cold Start ส่วน Serverless API Routes บน Node.js runtime มี Cold Start เฉลี่ยต่ำกว่า 250ms ซึ่งแทบไม่รู้สึกบนเครือข่ายมือถือ ด้านความปลอดภัย เราแยก Environment Variables ชัดเจน: NEXT_PUBLIC_SUPABASE_ANON_KEY ใช้เฉพาะหน้าบ้านและถูกจำกัดด้วย PostgreSQL Row-Level Security (RLS) ส่วน SUPABASE_SERVICE_ROLE_KEY และ SMTP_PASS ถูกเก็บเป็นความลับบน Serverless Environment เพื่อใช้ทำธุรกรรมที่ต้องใช้สิทธิ์ผู้ดูแล เช่น อนุมัติสลิปและออกตั๋ว"
+          }
+        },
+        {
+          slide: 4,
+          title: "สไลด์ที่ 04: ข้อมูลการเงิน บัญชีธนาคาร และ PromptPay",
+          text: `<blockquote>"เรื่องเงินเป็นเรื่องที่ต้องเป๊ะที่สุดในงานครับ บัตรคอนเสิร์ตของเราตั้งราคาไว้ที่ <strong>49 บาทต่อใบ</strong> เพื่อให้เพื่อนๆ นักศึกษาตัดสินใจซื้อง่าย โดยเงินที่โอนเข้ามาจะเข้าบัญชีหลักของทางร้าน คือ <strong>ธนาคารกสิกรไทย เลขที่ xxx-x-xxxxx-x ชื่อบัญชีคุณบัญชีทางการ งานลาบแรกพบ</strong> หรือสามารถสแกนจ่ายผ่าน <strong>พร้อมเพย์ 081-234-5678</strong> ได้ทันที ระบบของเราออกแบบให้ผู้ใช้กดปุ่มเดียวก็คัดลอกเลขบัญชีไปวางในแอปธนาคารได้เลย และที่สำคัญคือยอดเงินจะถูกคำนวณแบบแม่นยำ ไม่ว่าจะซื้อกี่ใบระบบก็คิดให้อัตโนมัติครับ"</blockquote>
+          <div class="talking-points">
+            <strong>💡 จุดเน้นสำหรับผู้บรรยาย:</strong><br>
+            • กดปุ่ม '📋 คัดลอก (xxxxxxxxx)' โชว์ว่าระบบคัดลอกเลขบัญชีแบบ Raw ให้ทันที<br>
+            • ชี้แจง QR Reference: 000000000000000 สำหรับจับคู่ยอดเงิน<br>
+            • เงินเข้าตรงบัญชีผู้จัด 100% ไม่เสียค่าธรรมเนียมตัวกลาง
+          </div>`,
+          grillMe: {
+            q: "ทำไมราคาตั๋ว 49 บาท ถึงต้องมีทั้งบัญชีกสิกรไทย (KBANK) และพร้อมเพย์? และถ้าลูกค้าโอนเงินผิดยอด (เช่น โอนขาดหรือโอนเกิน) ระบบจัดการอย่างไร?",
+            a: "ราคา 49 บาทซื้อง่ายแต่มีเศษ 9 บาท ถ้าซื้อหลายใบ (เช่น 2 ใบ 98฿ หรือ 3 ใบ 147฿) ลูกค้ามักโอนผิด เราจึงใช้ Dynamic PromptPay QR เป็นทางเลือกหลักเพื่อล็อกยอดเงินเป๊ะ แต่ยังคงแสดงบัญชี KBANK xxx-x-xxxxx-x (บัญชีทางการ งานลาบแรกพบ, raw: xxxxxxxxx) พร้อมเลขอ้างอิง 000000000000000 เผื่อแอปธนาคารบางแห่งสแกน QR ขัดข้อง หากลูกค้าโอนผิดยอด ระบบมี Partial Approval Flow ที่สตาฟสามารถอนุมัติตั๋วตามยอดที่ได้รับจริง (เช่น โอนมา 49฿ จากยอด 98฿ อนุมัติตั๋ว 1 ใบ) และส่งอีเมล partial_approval แจ้งยอดคงเหลือที่ต้องชำระเพิ่มเติมทันที"
+          }
+        },
+        {
+          slide: 5,
+          title: "สไลด์ที่ 05: เจาะลึกระบบสร้าง QR Code 2 รูปแบบ",
+          text: `<blockquote>"หลายคนอาจคิดว่า QR Code บนเว็บก็เหมือนๆ กัน แต่ในระบบงานลาบแรกพบ เราใช้ QR Code สองประเภทที่ทำงานต่างกันอย่างสิ้นเชิงครับ:<br>
+          • <strong>แบบแรกคือ Dynamic PromptPay QR:</strong> อันนี้ใช้สำหรับจ่ายเงิน เราใช้ไลบรารี <code>promptpay-qr</code> คำนวณเป็นรหัสมาตรฐานสากล EMVCo ตามยอดเงินจริง เช่น สั่ง 2 ใบ ยอด 98 บาท โค้ดจะล็อกยอดนี้ไว้เลย พอเปิดแอปธนาคารสแกนปุ๊บ ยอดเงินจะขึ้น 98 บาททันที ไม่ต้องให้ลูกค้ามานั่งพิมพ์ตัวเลขเอง<br>
+          • <strong>แบบที่สองคือ Ticket QR Code:</strong> อันนี้คือตั๋วเข้างาน เราใช้คำสั่งความปลอดภัยระดับสูงของ Node.js คือ <code>crypto.randomBytes(16)</code> สุ่มรหัสลับยาว 32 ตัวอักษรขึ้นมา ซึ่งไม่มีทางเดาถูกได้เลย และเมื่อสตาฟใช้กล้องมือถือสแกนผ่าน <code>html5-qrcode</code> ระบบจะตัดสถานะเป็น 'เข้างานแล้ว' ทันที ใครเอาภาพแคปจอมาสแกนซ้ำจะถูกปฏิเสธทันทีครับ"</blockquote>
+          <div class="talking-points">
+            <strong>💡 จุดเน้นสำหรับผู้บรรยาย:</strong><br>
+            • เปรียบเทียบตารางสองฝั่ง: EMVCo BOT Standard vs 32-Hex Crypto Ticket<br>
+            • ชี้ให้เห็นว่าตั๋วเข้างานปลอดภัยระดับเดียวกับโทเค็นธนาคาร ไม่มีทางเดารหัสได้
+          </div>`,
+          grillMe: {
+            q: "ความแตกต่างทางเทคนิคและมาตรฐานความปลอดภัยระหว่าง Dynamic PromptPay QR กับ Ticket Entrance QR คืออะไร? ทำไมไม่ใช้ไลบรารีเดียวกันสร้าง?",
+            a: "ทั้งสองตัวใช้ไลบรารี qrcode แปลงข้อมูลเป็นภาพเหมือนกัน แต่ Payload และมาตรฐานคนละระบบอย่างสิ้นเชิง: (1) PromptPay QR ต้องปฏิบัติตามมาตรฐาน EMVCo ของธนาคารแห่งประเทศไทย (BOT Specification) คำนวณผ่าน promptpay-qr ฝัง Tag ยอดเงินจริงและ ID 081-234-5678 เพื่อให้แอปธนาคารตัดเงินตรงเป๊ะ (2) Ticket QR เป็นรหัส Authorization สุ่มด้วย crypto.randomBytes(16) ของ Node.js ได้รหัสความปลอดภัยสูง 32 Hex Characters ที่ไม่เปิดเผยข้อมูลส่วนบุคคลใดๆ เพื่อให้กล้องหน้างานของสตาฟสแกนแล้วส่งไปทำ Atomic Update สถานะในฐานข้อมูล"
+          }
+        },
+        {
+          slide: 6,
+          title: "สไลด์ที่ 06: ระบบส่งอีเมลและตั๋วอัตโนมัติ (lib/email.ts)",
+          text: `<blockquote>"ฟังก์ชันสำคัญที่ทำให้ลูกค้ารู้สึกอุ่นใจคือ <strong>ระบบส่งอีเมลอัตโนมัติ</strong> ครับ เราเขียนโมดูล <code>lib/email.ts</code> เชื่อมต่อกับ Gmail SMTP พอร์ต 465 SSL โดยมีเทมเพลตอีเมลถึง 5 รูปแบบ ดูแลลูกค้าตั้งแต่วินาทีที่กดสั่ง ไปจนถึงส่งตั๋วให้ และไฮไลต์ทางเทคนิคคือ <strong>เราใช้วิธี Inline CID Attachment ฝังภาพ QR Code ตั๋วเข้าไปในไฟล์อีเมลเลย</strong> ลูกค้าเปิดเมลปุ๊บจะเห็นตั๋วทันที ไม่ต้องกด 'อนุญาตให้ดาวน์โหลดรูป' เหมือนอีเมลทั่วไป และหากการส่งมีปัญหาระบบจะแยกแยะ Error ได้ทันทีครับ"</blockquote>
+          <div class="talking-points">
+            <strong>💡 จุดเน้นสำหรับผู้บรรยาย:</strong><br>
+            • กดปุ่มสลับแท็บเทมเพลตด้านขวา (paid, order_created, slip_rejected) เพื่อโชว์พรีวิวอีเมลสดๆ<br>
+            • อธิบายข้อดีของ Inline CID (cid:ticket-1-uuid) ไม่พึ่งพา CDN รูปไม่หาย<br>
+            • ชี้แจงการรับมือ Error: auth_failed (535), provider_error, quota rate limit
+          </div>`,
+          grillMe: {
+            q: "ทำไมถึงเลือก Gmail SMTP (พอร์ต 465 SSL Direct) ร่วมกับ Inline CID แทนที่จะใช้บริการอีเมลภายนอกอย่าง SendGrid หรือ Resend?",
+            a: "งานคอนเสิร์ตสเกลอินดี้มีงบประมาณจำกัด Gmail SMTP ผ่าน App Password 16 หลักไม่มีค่าใช้จ่ายและส่งได้ถึง 500 ฉบับ/วัน ซึ่งเพียงพอต่อขนาดของงาน ส่วนเทคนิค Inline CID (Content-ID) แนบภาพตั๋วจาก QRCode.toBuffer เป็น PNG เข้าไปในก้อนอีเมลโดยตรง (cid:ticket-1-id) เพื่อแก้ปัญหาคลาสสิกที่แอปอีเมล (Gmail, Outlook) บล็อกรูปภาพจาก URL ภายนอก ทำให้ผู้ซื้อเปิดเมลแล้วเห็นภาพตั๋วทันที 100% แม้ออฟไลน์ พร้อมระบบแยกแยะ Error: auth_failed (535), provider_error, quota rate limit"
+          }
+        },
+        {
+          slide: 7,
+          title: "สไลด์ที่ 07: ฟีเจอร์ที่ 1 — ระบบสั่งซื้อบัตรแบบ Stepper (/buy)",
+          text: `<blockquote>"ฟีเจอร์แรกคือหน้าซื้อบัตร เราทำเป็นสเต็ป 1-2-3 ครับ ขั้นแรกให้เลือกจำนวนบัตรด้วยปุ่มบวก-ลบขนาดใหญ่ พอกดปุ๊บยอดเงินจะคำนวณให้ทันทีที่ใบละ 49 บาท จากนั้นขั้นที่สองค่อยให้กรอกชื่อและเบอร์โทร ซึ่งระบบจะตรวจแบบเรียลไทม์เลยว่ากรอกเบอร์ครบ 10 หลักไหม และขั้นที่สามเป็นหน้าสรุปยอดเพื่อกดยืนยัน การแยกเป็นขั้นแบบนี้ทำให้คนซื้อไม่ตาลายและกรอกข้อมูลไม่ผิดพลาดครับ"</blockquote>
+          <div class="talking-points">
+            <strong>💡 จุดเน้นสำหรับผู้บรรยาย:</strong><br>
+            • กดปุ่ม [+] และ [-] ใน Mockup ให้ดูว่ายอดเงินขยับตามจริง (ใบละ 49 บาท)<br>
+            • ลองลบเบอร์โทรในช่อง input เพื่อโชว์ Realtime Phone Validation<br>
+            • อธิบายช่อง Honeypot ซ่อนไว้ดักจับบอทสแปม
+          </div>`,
+          grillMe: {
+            q: "ทำไมต้องแบ่งเป็น 3 ขั้นตอน (Stepper) และป้องกันบอทกว้านซื้อตั๋วอย่างไรโดยไม่ใช้ CAPTCHA ที่น่ารำคาญ?",
+            a: "บนจอมือถือ การรวมแบบฟอร์มยาวๆ ทำให้ผู้ใช้กดยกเลิกง่าย Stepper ช่วยแบ่งสมาธิ: ขั้น 1 เลือกจำนวนและคำนวณเงินทันที (ใบละ 49฿), ขั้น 2 ตรวจเบอร์โทร 10 หลักแบบ Realtime, ขั้น 3 สรุปยอดและยืนยัน สำหรับการป้องกันบอท เราใช้เทคนิค Honeypot Field ซ่อนฟิลด์หลอกไว้ด้วย CSS display:none หากบอทเผลอกรอกเข้ามา ระบบจะปฏิเสธคำขอทันที ร่วมกับระบบ In-Memory Rate Limiting และเลขออเดอร์มีอายุเพียง 30 นาที หากไม่โอนจะตัดสิทธิ์คืนตั๋วให้คนอื่นทันที"
+          }
+        },
+        {
+          slide: 8,
+          title: "สไลด์ที่ 08: ฟีเจอร์ที่ 2 — สร้าง PromptPay QR อัตโนมัติ & แนบสลิป (/checkout)",
+          text: `<blockquote>"ฟีเจอร์ที่สองคือการจ่ายเงิน ปัญหาคลาสสิกของการโอนเงินคือ 'คนชอบโอนผิดยอด' เช่น สั่ง 2 ใบแต่โอนเงินมาใบเดียว ระบบเราแก้ปัญหานี้ด้วยการสร้าง <strong>Dynamic PromptPay QR Code</strong> ขึ้นมาโดยเอายอดเงินจริงฝังลงไปในคิวอาร์โค้ดเลย เช่น สั่ง 2 ใบ ยอด 98 บาท สแกนปุ๊บขึ้น 98 บาททันที หรือถ้าโอนผ่านเลขบัญชีกสิกรไทย xxx-x-xxxxx-x ก็ทำได้ โอนเสร็จก็แนบรูปสลิปเข้ามาในระบบได้ทันทีครับ"</blockquote>
+          <div class="talking-points">
+            <strong>💡 จุดเน้นสำหรับผู้บรรยาย:</strong><br>
+            • คลิกกล่องแนบสลิปด้านขวาเพื่อจำลองการแนบสลิปและโชว์ SHA-256 Hash<br>
+            • นาฬิกานับถอยหลัง 30 นาทีช่วยกระตุ้นการโอนและคืนโควตาถ้าไม่ชำระ<br>
+            • Split Payment รองรับกรณีเพื่อนโอนแยก 2 บัญชี
+          </div>`,
+          grillMe: {
+            q: "ถ้าระบบรองรับ Multi-slip / Split Payment มีโอกาสที่ผู้ซื้อจะส่งสลิปเดิมซ้ำๆ เพื่อรวมยอดให้ครบได้หรือไม่?",
+            a: "ไม่มีทางทำได้ เพราะทุกไฟล์สลิปที่อัปโหลดเข้า Supabase Storage Bucket 'slips' จะถูกคำนวณลายนิ้วมือดิจิทัลด้วย SHA-256 Hash ทันที หากนำไฟล์สลิปเดิมมาส่งซ้ำ ระบบจะเทียบ Hash กับประวัติในตาราง payments และขึ้นแถบเตือนสีแดงทันที อีกทั้งสถานะออเดอร์จะเปลี่ยนเป็น paid และออกตั๋วได้ก็ต่อเมื่อสตาฟใน /admin ตรวจสอบยอดเงินเข้าบัญชีจริงครบถ้วนแล้วเท่านั้น (Human-in-the-loop verification)"
+          }
+        },
+        {
+          slide: 9,
+          title: "สไลด์ที่ 09: ฟีเจอร์ที่ 3 — หลังบ้านตรวจสลิปฉับไว (/admin)",
+          text: `<blockquote>"ฟีเจอร์ที่สามเป็นหัวใจของฝั่งสตาฟเลยครับ หน้าตรวจสลิปทำงานเหมือนแอปเดลิเวอรี คือพอมีคนส่งสลิปเข้ามา <strong>จะมีเสียงกริ่งดังเตือนทันที</strong> สตาฟไม่ต้องนั่งจ้องจอทั้งคืน และที่เจ๋งมากคือ <strong>ระบบตรวจจับสลิปซ้ำด้วย SHA-256</strong> ถ้าระบบจำได้ว่าภาพสลิปนี้เคยมีคนส่งมาแล้ว จะขึ้นแถบสีแดงเตือนสตาฟทันทีว่าสลิปนี้ซ้ำ ช่วยป้องกันการถูกโกงหน้างานได้ 100% ครับ"</blockquote>
+          <div class="talking-points">
+            <strong>💡 จุดเน้นสำหรับผู้บรรยาย:</strong><br>
+            • กดปุ่ม '🔔 กดเพื่อทดสอบฟังเสียงกริ่ง' เพื่อโชว์ Web Audio API สดๆ<br>
+            • อธิบายการทำงานของ SHA-256 Hash เปรียบเหมือน 'ลายนิ้วมือดิจิทัล' ของไฟล์ภาพ<br>
+            • Concurrency Lock ป้องกันกรณีสตาฟ 2 คนเปิดดูพร้อมกันแล้วกดอนุมัติซ้ำ
+          </div>`,
+          grillMe: {
+            q: "Web Audio API ในหน้าตรวจสลิปต่างจากการใช้แท็ก audio ธรรมดาอย่างไร และ Concurrency Lock ป้องกันสตาฟกดชนกันอย่างไร?",
+            a: "แท็ก audio ทั่วไปต้องโหลดไฟล์ mp3 ผ่านเน็ต หากเน็ตกระตุกเสียงจะไม่ดัง และเบราว์เซอร์มักบล็อกเสียง Autoplay แต่ Web Audio API สังเคราะห์คลื่นเสียงความถี่คู่ (880Hz Sine + 1320Hz Triangle) ขึ้นมาสดๆ บนแรมเครื่อง ไม่ต้องโหลดไฟล์แม้แต่ไบต์เดียว ดังฉับไวใน 0 มิลลิวินาที ส่วน Concurrency Lock ใน /admin อาศัย Database Optimistic Locking เมื่อสตาฟคนแรกกดอนุมัติ สถานะจะเปลี่ยนจาก pending เป็น paid ทันที หากสตาฟคนที่สองกดตามหลัง ระบบจะพบว่าสถานะไม่ใช่ pending แล้ว และปฏิเสธคำขอของคนที่สองทันที ป้องกันการออกตั๋วเบิ้ล 100%"
+          }
+        },
+        {
+          slide: 10,
+          title: "สไลด์ที่ 10: ฟีเจอร์ที่ 4 — สแกน QR Code หน้างาน รับ Wristband (/staff/scan)",
+          text: `<blockquote>"ฟีเจอร์ที่สี่คือหน้าประตูทางเข้าครับ ลูกค้าที่ได้รับอนุมัติจะมีตั๋ว QR Code ในมือถือ สตาฟหน้าประตูแค่เปิดหน้าเว็บแล้วยกมือถือขึ้นมาสแกน ถ้าบัตรถูกต้องจะขึ้น <strong>หน้าจอสีเขียว</strong> สตาฟก็มอบสายรัดข้อมือให้เข้างานได้เลย ใช้เวลาแค่ 1-2 วินาทีต่อคน และถ้ามีใครเอาภาพแคปหน้าจอมาสแกนซ้ำ ระบบจะขึ้น <strong>สีแดงเตือนทันที</strong> ว่าบัตรนี้ถูกใช้ไปแล้วครับ"</blockquote>
+          <div class="talking-points">
+            <strong>💡 จุดเน้นสำหรับผู้บรรยาย:</strong><br>
+            • กดปุ่มจำลอง '🟢 สแกนผ่าน' และ '🔴 สแกนซ้ำ' ในหน้าจอเพื่อสาธิตผลลัพธ์<br>
+            • อธิบายกลไก Atomic Check-in ที่ตัดสถานะทันทีในดาต้าเบส กันการแคปจอส่งต่อ<br>
+            • มีระบบค้นหาสำรองด้วยชื่อ/เบอร์โทร กรณีลูกค้าจอแตกหรือแบตหมด
+          </div>`,
+          grillMe: {
+            q: "ถ้าสตาฟ 2 คน ใช้มือถือคนละเครื่องสแกนตั๋วใบเดียวกันในเสี้ยววินาทีเดียวกัน (Race Condition) มีโอกาสที่คนจะเข้างานได้ 2 คนหรือไม่?",
+            a: "ไม่สามารถเกิดขึ้นได้ เพราะเราใช้ Atomic Database Update: 'UPDATE tickets SET status = 'checked_in', checked_in_at = NOW() WHERE code = $code AND status = 'issued';' PostgreSQL มี Row-Level Lock คำขอแรกที่ถึง DB จะอัปเดตคืนค่า 1 row สำเร็จ สตาฟคนแรกจะได้หน้าจอสีเขียว ส่วนคำขอที่สองในเสี้ยววินาทีเดียวกันจะพบว่า status ไม่ใช่ 'issued' อีกต่อไป คืนค่า 0 row และหน้าจอจะขึ้นเตือนสีแดงทันทีว่าตั๋วถูกใช้งานไปแล้ว"
+          }
+        },
+        {
+          slide: 11,
+          title: "สไลด์ที่ 11: ฟีเจอร์ที่ 5 — สวิตช์ปิดรับออเดอร์ชั่วคราว (Venue Full Killswitch)",
+          text: `<blockquote>"ฟีเจอร์ที่ห้าคือสวิตช์แก้ปัญหาคนล้นร้านครับ ปกติร้านอาหารพื้นที่จำกัด ถ้าปล่อยให้ซื้อออนไลน์เรื่อยๆ ร้านจะแตก เราเลยทำปุ่มชื่อว่า <strong>'ร้านเต็มชั่วคราว'</strong> ไว้บนหน้าจอของสตาฟ พอเห็นว่าโต๊ะเต็ม สตาฟกดปุ่มนี้ปุ๊บ หน้าเว็บจะหยุดรับออเดอร์ใหม่ทันที แต่คนที่มีบัตรอยู่แล้วยังสแกนเข้างานได้ตามปกติ พอโต๊ะเริ่มว่าง สตาฟก็กดเปิดขายต่อได้ทันทีครับ"</blockquote>
+          <div class="talking-points">
+            <strong>💡 จุดเน้นสำหรับผู้บรรยาย:</strong><br>
+            • คลิกสวิตช์ใน Mockup เพื่อโชว์การสลับระหว่าง ปิดรับออเดอร์ (ON) และ เปิดขายปกติ (OFF)<br>
+            • ชี้ให้เห็นว่าคนที่มีตั๋วแล้วยังเข้างานได้ตามปกติ ไม่กระทบสิทธิ์เดิม<br>
+            • เปิดขายต่อได้ทันทีโดยไม่ต้อง Restart Server หรือแก้โค้ด
+          </div>`,
+          grillMe: {
+            q: "ปุ่ม Killswitch ร้านเต็มชั่วคราว (venue_status.is_full) ตัดการทำงานส่วนไหนบ้าง และทำไมไม่บล็อกคนที่มีตั๋วแล้วไม่ให้เข้างาน?",
+            a: "สวิตช์ Killswitch ถูกออกแบบมาเพื่อ Crowd Control จะตัดเฉพาะเส้นทางสร้างคำสั่งซื้อใหม่ (POST /api/orders) และบล็อกปุ่มสั่งซื้อในหน้า /buy ทันที แต่ไม่แตะต้องระบบสแกนตั๋ว (/api/scan) หรือหน้าดูตั๋ว (/orders) เพราะคนที่ซื้อตั๋วถูกต้องล่วงหน้าย่อมมีสิทธิ์เข้างานเสมอ และเมื่อมีลูกค้าเช็คบิลออกจากร้าน สตาฟสามารถกดปิดสวิตช์เพื่อให้ระบบเปิดรับออเดอร์ใหม่ได้ทันทีโดยไม่ต้อง Restart Server หรือแก้โค้ด"
+          }
+        },
+        {
+          slide: 12,
+          title: "สไลด์ที่ 12: ฟีเจอร์ที่ 6 — ระบบขายบัตรหน้างาน (Walk-up Onsite Sales)",
+          text: `<blockquote>"ฟีเจอร์ที่หกคือระบบขายตั๋วหน้างานครับ เพราะในงานจริงมีคนเดินวอล์กอินเข้ามาซื้อหน้างานเยอะมาก สตาฟสามารถกดเปิดหน้านี้ เลือกจำนวนใบ เลือกว่าจ่ายเงินสดหรือพร้อมเพย์ แล้วกดยืนยัน ระบบจะตัดตั๋วและเช็คอินให้อัตโนมัติทันที สตาฟก็สวมสายรัดข้อมือให้ลูกค้าเดินเข้าร้านได้เลย รวดเร็วและเก็บยอดเงินได้ครบถ้วนครับ"</blockquote>
+          <div class="talking-points">
+            <strong>💡 จุดเน้นสำหรับผู้บรรยาย:</strong><br>
+            • คลิกเลือกจำนวน 1, 2, 3 ใบ (49฿, 98฿, 147฿) และสลับระหว่าง 'เงินสด' กับ 'พร้อมเพย์'<br>
+            • One-click checkout: ออกตั๋ว + อนุมัติ + เช็คอิน พร้อมกันในคลิกเดียว<br>
+            • แดชบอร์ดสรุปยอดแยกประเภทชัดเจน: เงินโอนออนไลน์ vs เงินสดหน้างาน
+          </div>`,
+          grillMe: {
+            q: "ทำไมระบบ Walk-up Sales ถึงต้องทำเป็น One-Click และป้องกันสตาฟทุจริตเงินสดหน้าร้านได้อย่างไร?",
+            a: "บรรยากาศหน้าประตูร้านเสียงเพลงดังมากและมีคนต่อคิว การมีปุ่มลัด 1 ใบ (49฿), 2 ใบ (98฿), 3 ใบ (147฿) แล้วคลิกเดียวออกตั๋ว + อนุมัติ + เช็คอินแจก Wristband ช่วยระบายคิวใน 5 วินาที ส่วนการป้องกันทุจริตเงินสด ระบบผูกทุกรายการกับ Staff Session บันทึกเวลา และสรุปยอดเงินสดแยกจากเงินโอนอย่างชัดเจนในแดชบอร์ด โดยนำจำนวนเงินสดที่ได้มาเทียบกับจำนวนสายรัดข้อมือ (Wristband Count) ที่สตาฟเบิกไป หากยอดเงินไม่ตรงกับสายรัดข้อมือที่หายไปจะตรวจพบได้ทันที"
+          }
+        },
+        {
+          slide: 13,
+          title: "สไลด์ที่ 13: สรุปภาพรวมการเชื่อมโยงทั้งระบบ (End-to-End Diagram)",
+          text: `<blockquote>"สไลด์นี้สรุปภาพใหญ่ให้เพื่อนๆ เห็นทั้งหมดครับ ฝั่งซ้ายคือผู้ซื้อที่ทำรายการผ่านมือถือ ข้อมูลทั้งหมดจะวิ่งเข้าไปที่ฐานข้อมูล Supabase ตรงกลาง แล้วฝั่งขวาคือสตาฟที่ใช้มือถือคนละเครื่อง คอยตรวจสลิป สแกนตั๋วหน้าประตู และควบคุมสวิตช์ร้านเต็ม ทุกส่วนทำงานแบบเรียลไทม์เชื่อมถึงกันหมดอย่างราบรื่นครับ"</blockquote>
+          <div class="talking-points">
+            <strong>💡 จุดเน้นสำหรับผู้บรรยาย:</strong><br>
+            • ชี้ตาม Flow: Buyer ➔ Next.js on Vercel ➔ Supabase Cloud ➔ Staff & Gmail SMTP<br>
+            • อธิบาย 4 ตารางหลัก: orders, payments, tickets, venue_status และ Storage 'slips'<br>
+            • ระบบเชื่อมถึงกันแบบ Realtime ทั่วทั้งงาน
+          </div>`,
+          grillMe: {
+            q: "ถ้าฐานข้อมูล Supabase เกิดขัดข้องหรือ Down ไปชั่วขณะ ระบบมีแผนรับมือฉุกเฉิน (Fallback Plan) อย่างไร?",
+            a: "ระบบออกแบบตามหลัก Fail-Closed เพื่อความปลอดภัย: API Routes จะส่ง HTTP 503 Service Unavailable แจ้งเตือนลูกค้าอย่างสุภาพ แทนที่จะปล่อยให้ออเดอร์ค้างคา ส่วนหน้างานสตาฟมี Offline Export Manifest (ไฟล์สำรองรายชื่อและโค้ดตั๋วที่ export ไว้ล่วงหน้า) ซึ่งสตาฟสามารถใช้หน้า /staff/search แบบ Local Cache ค้นหาชื่อและเบอร์โทรเพื่อติ๊กรับสายรัดข้อมือเข้างานได้ต่อเนื่องโดยไม่สะดุดแม้คลาวด์จะขัดข้อง"
+          }
+        },
+        {
+          slide: 14,
+          title: "สไลด์ที่ 14: สรุปสิ่งที่ได้เรียนรู้และนำไปต่อยอด (Key Takeaways)",
+          text: `<blockquote>"สรุปแล้ว การสร้างเว็บไซต์นี้ทำให้เราได้เรียนรู้ว่า <strong>การทำเว็บที่ดี ไม่ใช่แค่หน้าตาดูสวย แต่คือการคิดเผื่อปัญหาหน้างานจริง</strong> ทั้งเรื่องการตรวจสลิป การกันคนโกง และการทำให้สตาฟทำงานได้เร็วที่สุดด้วยมือถือเครื่องเดียว หวังว่าสิ่งที่พวกเรานำเสนอในวันนี้จะช่วยให้เพื่อนๆ เห็นไอเดียและนำไปต่อยอดกับการทำโปรเจกต์ของตัวเองได้ครับ ขอบคุณครับ!"</blockquote>
+          <div class="talking-points">
+            <strong>💡 จุดเน้นสำหรับผู้บรรยาย:</strong><br>
+            • สรุป 3 เสาหลัก: Mobile-First, Fraud Prevention, Real-World Operational Flexibility<br>
+            • ย้ำว่าการเขียนโปรแกรมต้องตอบโจทย์ชีวิตจริงของผู้ใช้งาน<br>
+            • ขอบคุณอาจารย์และเพื่อนๆ เปิดรับคำถามช่วง Q&A
+          </div>`,
+          grillMe: {
+            q: "ตัวเลขสถิติ 51 ใบ เช็คอิน 96.1% สกัดสลิปซ้ำ 100% พิสูจน์ความคุ้มค่าของการพัฒนาระบบนี้อย่างไรเมื่อเทียบกับต้นทุน?",
+            a: "ต้นทุนโครงสร้างพื้นฐานของระบบนี้คือ 0 บาท (Zero Dollar Tech Stack): Vercel Hobby Tier ฟรี, Supabase Free Tier ฟรี, Gmail SMTP ฟรี ในขณะที่งานจริงครั้งที่ 1 และ 2 ขายบัตรได้ครบ 51 ใบ มีผู้เข้างานจริง 49 คน (96.1%) ตรวจพบความพยายามส่งสลิปซ้ำ 2 ครั้งและระบบสกัดได้ 100% สตาฟหน้างานใช้เวลาตรวจตั๋วเฉลี่ยเพียง 1.2 วินาทีต่อคน ไม่เกิดปัญหาคิวหน้าประตูล้นออกไปบนถนน และเงินรายได้เข้าบัญชีร้านเต็มเม็ดเต็มหน่วย 100% พิสูจน์ว่าสถาปัตยกรรมระดับโปรดักชันสามารถสร้างขึ้นได้ด้วยงบประหยัดแต่มีเสถียรภาพสูงสุด"
+          }
+        }
+      ];
+
+      // State Management
+      let currentSlide = 1;
+      const totalSlides = speakerNotes.length;
+      let notesVisible = false;
+      let notesFontSize = 14.5;
+
+      // DOM Elements
+      const slides = document.querySelectorAll('.slide-content-wrap');
+      const progressBar = document.getElementById('top-progress-bar');
+      const counterChip = document.getElementById('slide-counter-chip');
+      const currentTitleEl = document.getElementById('footer-current-title');
+      const dotsContainer = document.getElementById('slide-dots-container');
+      const btnPrev = document.getElementById('btn-prev');
+      const btnNext = document.getElementById('btn-next');
+      const btnNotes = document.getElementById('btn-speaker-notes');
+      const btnFullscreen = document.getElementById('btn-fullscreen');
+      const btnGridModal = document.getElementById('btn-grid-modal');
+      const notesDrawer = document.getElementById('speaker-notes-drawer');
+      const notesTitleEl = document.getElementById('notes-slide-title');
+      const notesContentEl = document.getElementById('notes-content');
+      const btnCloseNotes = document.getElementById('btn-close-notes');
+      const btnCopyNotes = document.getElementById('btn-copy-notes');
+      const btnNotesFontPlus = document.getElementById('btn-notes-font-plus');
+      const btnNotesFontMinus = document.getElementById('btn-notes-font-minus');
+      const gridModal = document.getElementById('grid-modal');
+      const btnCloseModal = document.getElementById('btn-close-modal');
+      const gridModalList = document.getElementById('grid-modal-list');
+      const iconFsEnter = document.getElementById('icon-fs-enter');
+      const iconFsExit = document.getElementById('icon-fs-exit');
+      const labelFs = document.getElementById('label-fs');
+      const toastPopup = document.getElementById('toast-popup');
+
+      function showToast(message) {
+        if (!toastPopup) return;
+        toastPopup.textContent = message;
+        toastPopup.style.display = 'block';
+        setTimeout(() => { toastPopup.style.display = 'none'; }, 2500);
+      }
+
+      // Initialize Slide Dots & Grid Jump Items
+      function initializeNavigationUI() {
+        dotsContainer.innerHTML = '';
+        gridModalList.innerHTML = '';
+
+        slides.forEach((slideEl, index) => {
+          const slideNum = index + 1;
+          const slideTitle = slideEl.getAttribute('data-title') || `สไลด์ ${slideNum}`;
+
+          // Create Footer Dot
+          const dot = document.createElement('div');
+          dot.className = `slide-dot ${slideNum === 1 ? 'active' : ''}`;
+          dot.title = `ไปที่สไลด์ ${slideNum}: ${slideTitle}`;
+          dot.addEventListener('click', () => {
+            goToSlide(slideNum);
+          });
+          dotsContainer.appendChild(dot);
+
+          // Create Modal Item
+          const jumpItem = document.createElement('div');
+          jumpItem.className = `grid-jump-item ${slideNum === 1 ? 'active' : ''}`;
+          jumpItem.innerHTML = `
+            <div class="jump-item-num">${String(slideNum).padStart(2, '0')}</div>
+            <div class="jump-item-info">
+              <h5>${slideTitle}</h5>
+              <p>คลิกเพื่อสลับไปยังสไลด์นี้</p>
+            </div>
+          `;
+          jumpItem.addEventListener('click', () => {
+            goToSlide(slideNum);
+            toggleGridModal(false);
+          });
+          gridModalList.appendChild(jumpItem);
+        });
+      }
+
+      // Update Slide State
+      function goToSlide(slideNumber) {
+        if (slideNumber < 1 || slideNumber > totalSlides) return;
+        currentSlide = slideNumber;
+
+        // Update active slide view
+        slides.forEach((slideEl, index) => {
+          if (index + 1 === currentSlide) {
+            slideEl.classList.add('active');
+            slideEl.scrollTop = 0;
+          } else {
+            slideEl.classList.remove('active');
+          }
+        });
+
+        // Update Progress Bar
+        const progressPercent = (currentSlide / totalSlides) * 100;
+        progressBar.style.width = `${progressPercent}%`;
+
+        // Update Counter
+        counterChip.textContent = `${String(currentSlide).padStart(2, '0')} / ${String(totalSlides).padStart(2, '0')}`;
+
+        // Update Footer Title
+        const activeSlideEl = document.querySelector(`.slide-content-wrap[data-slide="${currentSlide}"]`);
+        const titleText = activeSlideEl ? activeSlideEl.getAttribute('data-title') : '';
+        currentTitleEl.textContent = titleText;
+
+        // Update Navigation Buttons Disabled State
+        btnPrev.disabled = currentSlide === 1;
+        btnNext.disabled = currentSlide === totalSlides;
+        if (currentSlide === totalSlides) {
+          btnNext.innerHTML = `<span>จบการนำเสนอ</span>`;
+        } else {
+          btnNext.innerHTML = `<span>ถัดไป</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>`;
+        }
+
+        // Update Dots
+        const dots = dotsContainer.querySelectorAll('.slide-dot');
+        dots.forEach((dot, index) => {
+          dot.classList.toggle('active', index + 1 === currentSlide);
+        });
+
+        // Update Modal Items
+        const jumpItems = gridModalList.querySelectorAll('.grid-jump-item');
+        jumpItems.forEach((item, index) => {
+          item.classList.toggle('active', index + 1 === currentSlide);
+        });
+
+        // Update Speaker Notes Content
+        updateSpeakerNotes();
+      }
+
+      function nextSlide() {
+        if (currentSlide < totalSlides) {
+          goToSlide(currentSlide + 1);
+        }
+      }
+
+      function prevSlide() {
+        if (currentSlide > 1) {
+          goToSlide(currentSlide - 1);
+        }
+      }
+
+
+      // Speaker Notes Mode State ('speech' or 'grill')
+      let notesMode = 'speech';
+      const btnTabSpeech = document.getElementById('btn-tab-speech');
+      const btnTabGrill = document.getElementById('btn-tab-grill');
+
+      const shortcutsModal = document.getElementById('shortcuts-modal');
+      const btnShortcutsHelp = document.getElementById('btn-shortcuts-help');
+      const btnCloseShortcuts = document.getElementById('btn-close-shortcuts');
+
+      function toggleShortcutsModal(forceState) {
+        if (!shortcutsModal) return;
+        const isOpen = shortcutsModal.classList.contains('open');
+        const shouldOpen = typeof forceState === 'boolean' ? forceState : !isOpen;
+        shortcutsModal.classList.toggle('open', shouldOpen);
+      }
+
+      if (btnShortcutsHelp) {
+        btnShortcutsHelp.addEventListener('click', (e) => {
+          e.currentTarget.blur();
+          toggleShortcutsModal(true);
+        });
+      }
+      if (btnCloseShortcuts) {
+        btnCloseShortcuts.addEventListener('click', () => {
+          toggleShortcutsModal(false);
+        });
+      }
+      if (shortcutsModal) {
+        shortcutsModal.addEventListener('click', (e) => {
+          if (e.target === shortcutsModal) toggleShortcutsModal(false);
+        });
+      }
+
+      if (btnTabSpeech && btnTabGrill) {
+        btnTabSpeech.addEventListener('click', () => {
+          notesMode = 'speech';
+          btnTabSpeech.classList.add('active');
+          btnTabGrill.classList.remove('active');
+          updateSpeakerNotes();
+        });
+        btnTabGrill.addEventListener('click', () => {
+          notesMode = 'grill';
+          btnTabGrill.classList.add('active');
+          btnTabSpeech.classList.remove('active');
+          updateSpeakerNotes();
+        });
+      }
+
+      // Robust Clipboard with Fallback for file:// protocol and offline browsers
+      function copyToClipboard(text, successMessage) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(() => {
+            showToast(successMessage);
+          }).catch(() => {
+            fallbackCopy(text, successMessage);
+          });
+        } else {
+          fallbackCopy(text, successMessage);
+        }
+      }
+
+      function fallbackCopy(text, successMessage) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          document.execCommand('copy');
+          showToast(successMessage);
+        } catch (err) {
+          showToast('คัดลอก: ' + text);
+        }
+        document.body.removeChild(ta);
+      }
+
+      // Speaker Notes
+      function updateSpeakerNotes() {
+        const noteData = speakerNotes.find(n => n.slide === currentSlide);
+        if (noteData) {
+          notesTitleEl.textContent = noteData.title;
+          if (notesMode === 'speech') {
+            notesContentEl.innerHTML = noteData.text;
+          } else {
+            notesContentEl.innerHTML = `
+              <div class="grill-card">
+                <div class="grill-q-title">
+                  <span>❓</span>
+                  <span>คำถามที่คาดว่าจะถูกซักถามเจาะลึก (Grill-Me):</span>
+                </div>
+                <div class="grill-q-text">${noteData.grillMe.q}</div>
+                <div class="grill-a-title">
+                  <span>🛡️</span>
+                  <span>แนวทางการตอบโต้เชิงสถาปัตยกรรม (Defense Script):</span>
+                </div>
+                <div class="grill-a-text">${noteData.grillMe.a}</div>
+              </div>
+            `;
+          }
+          notesContentEl.style.fontSize = `${notesFontSize}px`;
+        } else {
+          notesTitleEl.textContent = `สไลด์ที่ ${currentSlide}`;
+          notesContentEl.innerHTML = "<p>ไม่มีบทพูดสำหรับสไลด์นี้</p>";
+        }
+      }
+
+      function toggleSpeakerNotes(forceState) {
+        notesVisible = typeof forceState === 'boolean' ? forceState : !notesVisible;
+        notesDrawer.classList.toggle('open', notesVisible);
+        btnNotes.classList.toggle('active', notesVisible);
+      }
+
+      function toggleGridModal(forceState) {
+        const isOpen = gridModal.classList.contains('open');
+        const shouldOpen = typeof forceState === 'boolean' ? forceState : !isOpen;
+        gridModal.classList.toggle('open', shouldOpen);
+      }
+
+      // Fullscreen
+      function toggleFullscreen() {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().then(() => {
+            iconFsEnter.style.display = 'none';
+            iconFsExit.style.display = 'inline';
+            labelFs.textContent = 'ย่อจอ';
+          }).catch(err => {
+            console.warn('Fullscreen error:', err);
+          });
+        } else {
+          if (document.exitFullscreen) {
+            document.exitFullscreen().then(() => {
+              iconFsEnter.style.display = 'inline';
+              iconFsExit.style.display = 'none';
+              labelFs.textContent = 'เต็มจอ';
+            });
+          }
+        }
+      }
+
+      // Event Listeners for Controls
+      btnPrev.addEventListener('click', (e) => { e.currentTarget.blur(); prevSlide(); });
+      btnNext.addEventListener('click', (e) => { e.currentTarget.blur(); nextSlide(); });
+      btnNotes.addEventListener('click', (e) => { e.currentTarget.blur(); toggleSpeakerNotes(); });
+      btnCloseNotes.addEventListener('click', () => { toggleSpeakerNotes(false); });
+      btnGridModal.addEventListener('click', (e) => { e.currentTarget.blur(); toggleGridModal(true); });
+      btnCloseModal.addEventListener('click', () => { toggleGridModal(false); });
+      gridModal.addEventListener('click', (e) => {
+        if (e.target === gridModal) toggleGridModal(false);
+      });
+      btnFullscreen.addEventListener('click', (e) => { e.currentTarget.blur(); toggleFullscreen(); });
+
+      // Font size adjustment in notes
+      btnNotesFontPlus.addEventListener('click', () => {
+        if (notesFontSize < 22) {
+          notesFontSize += 1.5;
+          notesContentEl.style.fontSize = `${notesFontSize}px`;
+        }
+      });
+      btnNotesFontMinus.addEventListener('click', () => {
+        if (notesFontSize > 11) {
+          notesFontSize -= 1.5;
+          notesContentEl.style.fontSize = `${notesFontSize}px`;
+        }
+      });
+
+      // Copy Notes (Active mode: speech or grill)
+      btnCopyNotes.addEventListener('click', () => {
+        const textToCopy = notesContentEl.innerText;
+        copyToClipboard(textToCopy, notesMode === 'speech' ? '✓ คัดลอกบทพูดสไลด์เรียบร้อย!' : '✓ คัดลอกแนวทางตอบ Grill-Me เรียบร้อย!');
+      });
+
+      // Copy Bank & PromptPay Listeners with offline fallback
+      const btnCopyKbank = document.getElementById('btn-copy-kbank');
+      if (btnCopyKbank) {
+        btnCopyKbank.addEventListener('click', () => {
+          copyToClipboard('xxxxxxxxx', '✓ คัดลอกเลขบัญชีกสิกรไทยแล้ว (xxxxxxxxx)');
+        });
+      }
+      const btnCopyPromptpay = document.getElementById('btn-copy-promptpay');
+      if (btnCopyPromptpay) {
+        btnCopyPromptpay.addEventListener('click', () => {
+          copyToClipboard('081-234-5678', '✓ คัดลอก PromptPay ID แล้ว (081-234-5678)');
+        });
+      }
+
+      // Email Template Switcher in Slide 06
+      const emailTabBtns = document.querySelectorAll('.email-tab-btn');
+      const emailSubjectEl = document.getElementById('email-preview-subject');
+      const emailBodyEl = document.getElementById('email-preview-body');
+
+      const emailTemplates = {
+        paid: {
+          subject: "[งานลาบแรกพบ ครั้งที่ 2] ชำระเงินสำเร็จ! บัตรเข้างานของคุณ #LRP-2024-X91A",
+          html: `สวัสดีคุณ <strong>สมชาย ใจดี</strong>,<br><br>
+          การชำระเงินสำหรับออเดอร์ #LRP-2024-X91A ได้รับการอนุมัติแล้ว! นี่คือตั๋ว QR Code ของคุณ:<br>
+          <div style="text-align: center; margin: 10px auto; padding: 10px; border: 1px solid #e5e7eb; border-radius: 8px; max-width: 180px; background: #fafafa;">
+            <div style="font-size: 11px; font-weight: 700; margin-bottom: 4px;">บัตรใบที่ 1 จาก 1</div>
+            <div style="background: #111; color: #fff; padding: 12px; font-family: var(--font-mono); font-size: 10px; border-radius: 6px;">[ QR Code ตั๋วเข้างาน ]</div>
+            <div style="font-size: 9.5px; color: #6b7280; margin-top: 4px;">cid:ticket-1-uuid (Inline CID)</div>
+          </div>
+          <div style="text-align: center; margin-top: 8px;">
+            <span style="background: #8F1D2D; color: #fff; padding: 6px 14px; border-radius: 6px; font-weight: 700; font-size: 11px; display: inline-block;">เปิดดูตั๋วบนเว็บไซต์</span>
+          </div>`
+        },
+        order_created: {
+          subject: "[งานลาบแรกพบ ครั้งที่ 2] ยืนยันคำสั่งซื้อบัตร #LRP-2024-X91A",
+          html: `สวัสดีคุณ <strong>สมชาย ใจดี</strong>,<br><br>
+          ระบบได้รับคำสั่งซื้อบัตรงาน "งานลาบแรกพบ ครั้งที่ 2" ของคุณแล้ว จำนวน 2 ใบ (ยอดรวม 98.00 บาท)<br>
+          กรุณาชำระเงินและแนบสลิปได้ที่:<br>
+          <span style="color: #8F1D2D; text-decoration: underline; font-family: var(--font-mono); font-size: 11px;">https://larb-raek-phob.vercel.app/checkout?order=LRP-2024-X91A</span><br><br>
+          หลังจากแนบสลิปแล้ว โปรดรอสักครู่ให้พนักงานตรวจสอบ ระบบจะส่งอีเมลแจ้งผลและยืนยันบัตรให้คุณอีกครั้งครับ`
+        },
+        slip_received: {
+          subject: "[งานลาบแรกพบ ครั้งที่ 2] เราได้รับสลิปการโอนเงินของออเดอร์ #LRP-2024-X91A แล้ว",
+          html: `สวัสดีคุณ <strong>สมชาย ใจดี</strong>,<br><br>
+          เราได้รับสลิปการโอนเงินของคำสั่งซื้อ #LRP-2024-X91A เรียบร้อยแล้ว (ไฟล์ภาพถูกจัดเก็บใน Supabase Storage 'slips')<br>
+          ขณะนี้สตาฟกำลังตรวจสอบความถูกต้อง เมื่อตรวจเสร็จสิ้น เราจะส่งอีเมลตั๋วเข้างานให้คุณทันทีครับ`
+        },
+        partial_approval: {
+          subject: "[งานลาบแรกพบ ครั้งที่ 2] ได้รับการชำระเงินบางส่วน ออเดอร์ #LRP-2024-X91A",
+          html: `สวัสดีคุณ <strong>สมชาย ใจดี</strong>,<br><br>
+          สตาฟได้อนุมัติยอดโอน 49.00 บาท (สำหรับบัตร 1 ใบ) ยอดคงเหลือที่ต้องชำระเพิ่มเติมคือ <strong>49.00 บาท</strong><br>
+          กรุณาแนบสลิปเพิ่มเติมเพื่อรับตั๋วครบทั้ง 2 ใบที่หน้าชำระเงินครับ`
+        },
+        slip_rejected: {
+          subject: "[งานลาบแรกพบ ครั้งที่ 2] แจ้งผลการตรวจสอบสลิป ออเดอร์ #LRP-2024-X91A",
+          html: `สวัสดีคุณ <strong>สมชาย ใจดี</strong>,<br><br>
+          สลิปการโอนเงินของท่านไม่ผ่านการตรวจสอบ เนื่องจาก: <strong style="color: #EF4444;">ยอดเงินไม่ตรงกับจำนวนบัตร หรือภาพสลิปไม่ชัดเจน</strong><br>
+          ท่านสามารถตรวจสอบและแนบสลิปใหม่ได้ทันทีที่หน้าคำสั่งซื้อของคุณครับ`
+        }
+      };
+
+      emailTabBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          emailTabBtns.forEach(b => b.classList.remove('active'));
+          e.currentTarget.classList.add('active');
+          const tmplKey = e.currentTarget.getAttribute('data-tmpl');
+          const tmpl = emailTemplates[tmplKey];
+          if (tmpl && emailSubjectEl && emailBodyEl) {
+            emailSubjectEl.textContent = tmpl.subject;
+            emailBodyEl.innerHTML = tmpl.html;
+          }
+        });
+      });
+
+      // Keyboard Shortcuts
+      document.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+        switch (e.key) {
+          case 'ArrowRight':
+          case 'PageDown':
+          case ' ':
+            e.preventDefault();
+            nextSlide();
+            break;
+          case 'ArrowLeft':
+          case 'PageUp':
+            e.preventDefault();
+            prevSlide();
+            break;
+          case 'Home':
+            e.preventDefault();
+            goToSlide(1);
+            break;
+          case 'End':
+            e.preventDefault();
+            goToSlide(totalSlides);
+            break;
+          case 'n':
+          case 'N':
+            e.preventDefault();
+            toggleSpeakerNotes();
+            break;
+          case 'g':
+          case 'G':
+          case 'm':
+          case 'M':
+            e.preventDefault();
+            toggleGridModal();
+            break;
+          case '?':
+          case '/':
+            e.preventDefault();
+            toggleShortcutsModal();
+            break;
+          case 'f':
+          case 'F':
+            e.preventDefault();
+            toggleFullscreen();
+            break;
+          case 'Escape':
+            toggleGridModal(false);
+            toggleShortcutsModal(false);
+            toggleSpeakerNotes(false);
+            break;
+        }
+      });
+
+      // Touch / Swipe
+      let touchStartX = 0;
+      let touchEndX = 0;
+      document.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+      }, { passive: true });
+      document.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+      }, { passive: true });
+
+      function handleSwipe() {
+        const threshold = 50;
+        if (touchEndX < touchStartX - threshold) {
+          nextSlide();
+        }
+        if (touchEndX > touchStartX + threshold) {
+          prevSlide();
+        }
+      }
+
+      /* ==============================================================
+         INTERACTIVE DEMOS FOR EACH SLIDE (Live Classroom Showcase)
+         ============================================================== */
+
+      // 1. Stepper quantity & validation (Slide 07)
+      let demoTickets = 2;
+      const demoCountEl = document.getElementById('demo-ticket-count');
+      const demoTotalEl = document.getElementById('demo-total-price');
+      const demoBtnPlus = document.getElementById('demo-btn-plus');
+      const demoBtnMinus = document.getElementById('demo-btn-minus');
+      const demoPhoneInput = document.getElementById('demo-phone-input');
+      const demoPhoneBadge = document.getElementById('demo-phone-badge');
+      const demoBtnSubmit = document.getElementById('demo-btn-submit');
+      const demoToast = document.getElementById('demo-submit-toast');
+
+      function updateDemoTicketUI() {
+        if (!demoCountEl || !demoTotalEl) return;
+        demoCountEl.textContent = `${demoTickets} ใบ`;
+        demoTotalEl.textContent = `${(demoTickets * 49).toFixed(2)} บาท`;
+      }
+      if (demoBtnPlus) {
+        demoBtnPlus.addEventListener('click', (e) => {
+          e.currentTarget.blur();
+          if (demoTickets < 5) {
+            demoTickets++;
+            updateDemoTicketUI();
+          }
+        });
+      }
+      if (demoBtnMinus) {
+        demoBtnMinus.addEventListener('click', (e) => {
+          e.currentTarget.blur();
+          if (demoTickets > 1) {
+            demoTickets--;
+            updateDemoTicketUI();
+          }
+        });
+      }
+      if (demoPhoneInput) {
+        demoPhoneInput.addEventListener('input', (e) => {
+          const val = e.target.value.replace(/[^0-9]/g, '');
+          if (val.length === 10 && val.startsWith('0')) {
+            demoPhoneBadge.textContent = '✓ ถูกต้อง: เบอร์โทร 10 หลักขึ้นต้นด้วย 0';
+            demoPhoneBadge.style.color = 'var(--status-success)';
+          } else {
+            demoPhoneBadge.textContent = '⚠️ ต้องมี 10 หลัก (ขึ้นต้นด้วย 0)';
+            demoPhoneBadge.style.color = 'var(--status-danger)';
+          }
+        });
+      }
+      if (demoBtnSubmit) {
+        demoBtnSubmit.addEventListener('click', (e) => {
+          e.currentTarget.blur();
+          demoToast.style.display = 'block';
+          demoToast.textContent = `✓ สร้างคำสั่งซื้อเรียบร้อย! ส่งต่อยอดเงิน ${(demoTickets * 49).toFixed(2)}฿ ไปยัง PromptPay QR`;
+          setTimeout(() => { demoToast.style.display = 'none'; }, 3000);
+        });
+      }
+
+      // 2. Slip dropzone (Slide 08)
+      const demoSlipDrop = document.getElementById('demo-slip-dropzone');
+      const demoSlipText = document.getElementById('demo-slip-text');
+      const demoSlipSub = document.getElementById('demo-slip-sub');
+      let slipAttached = false;
+      if (demoSlipDrop) {
+        demoSlipDrop.addEventListener('click', () => {
+          slipAttached = !slipAttached;
+          if (slipAttached) {
+            demoSlipDrop.style.background = 'rgba(16, 185, 129, 0.15)';
+            demoSlipDrop.style.borderColor = 'var(--status-success)';
+            demoSlipText.textContent = '✓ แนบสลิปแล้ว: kplus_slip_98baht.jpg';
+            demoSlipText.style.color = 'var(--status-success)';
+            demoSlipSub.textContent = 'SHA-256 Hash: e3b0c44298fc1c149afbf4c8996fb924... (พร้อมส่ง)';
+          } else {
+            demoSlipDrop.style.background = 'rgba(245, 158, 11, 0.08)';
+            demoSlipDrop.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+            demoSlipText.textContent = '📎 คลิกเพื่อทดลองแนบสลิปโอนเงิน';
+            demoSlipText.style.color = 'var(--text-heading)';
+            demoSlipSub.textContent = 'จำลองการส่งภาพสลิปเข้าสู่ระบบ';
+          }
+        });
+      }
+
+      // 3. Web Audio Bell Chime (Slide 09)
+      const demoBtnSound = document.getElementById('demo-btn-sound');
+      const demoBtnApprove1 = document.getElementById('demo-btn-approve-1');
+      const demoAdminItem1 = document.getElementById('demo-admin-item-1');
+
+      function playChimeSound() {
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          const osc1 = ctx.createOscillator();
+          const osc2 = ctx.createOscillator();
+          const gain = ctx.createGain();
+
+          osc1.type = 'sine';
+          osc1.frequency.setValueAtTime(880, ctx.currentTime);
+          osc1.frequency.exponentialRampToValueAtTime(1760, ctx.currentTime + 0.15);
+
+          osc2.type = 'triangle';
+          osc2.frequency.setValueAtTime(1320, ctx.currentTime);
+          osc2.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.3);
+
+          gain.gain.setValueAtTime(0.3, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc1.start();
+          osc2.start();
+          osc1.stop(ctx.currentTime + 0.6);
+          osc2.stop(ctx.currentTime + 0.6);
+        } catch (e) {
+          console.warn('AudioContext not allowed without user gesture', e);
+        }
+      }
+
+      if (demoBtnSound) {
+        demoBtnSound.addEventListener('click', (e) => {
+          e.currentTarget.blur();
+          playChimeSound();
+          demoBtnSound.style.transform = 'scale(0.96)';
+          setTimeout(() => { demoBtnSound.style.transform = ''; }, 150);
+        });
+      }
+      if (demoBtnApprove1) {
+        demoBtnApprove1.addEventListener('click', (e) => {
+          e.currentTarget.blur();
+          demoBtnApprove1.textContent = '✓ อนุมัติแล้ว!';
+          demoBtnApprove1.style.background = '#059669';
+          demoAdminItem1.style.borderColor = 'var(--status-success)';
+          showToast('✓ อนุมัติสำเร็จ! ตั๋ว QR Code และอีเมลถูกส่งเรียบร้อย');
+        });
+      }
+
+      // 4. Camera scan simulation (Slide 10)
+      const demoViewfinder = document.getElementById('demo-viewfinder');
+      const demoViewfinderStatus = document.getElementById('demo-viewfinder-status');
+      const demoBtnScanPass = document.getElementById('demo-btn-scan-pass');
+      const demoBtnScanFail = document.getElementById('demo-btn-scan-fail');
+
+      if (demoBtnScanPass) {
+        demoBtnScanPass.addEventListener('click', (e) => {
+          e.currentTarget.blur();
+          demoViewfinder.style.background = 'rgba(16, 185, 129, 0.25)';
+          demoViewfinder.style.borderColor = 'var(--status-success)';
+          demoViewfinderStatus.innerHTML = '<span style="color:var(--status-success);font-weight:800;font-size:14px;">✓ ผ่าน: นายสมชาย (2 ใบ)</span><br><span style="color:#fff;font-size:11px;">มอบสายรัดข้อมือ Wristband ได้เลย</span>';
+          playChimeSound();
+        });
+      }
+      if (demoBtnScanFail) {
+        demoBtnScanFail.addEventListener('click', (e) => {
+          e.currentTarget.blur();
+          demoViewfinder.style.background = 'rgba(239, 68, 68, 0.25)';
+          demoViewfinder.style.borderColor = 'var(--status-danger)';
+          demoViewfinderStatus.innerHTML = '<span style="color:var(--status-danger);font-weight:800;font-size:14px;">⚠️ เตือน: ตั๋วถูกใช้ไปแล้ว!</span><br><span style="color:#fff;font-size:11px;">เข้างานแล้วเมื่อ 19:42 น. (สกัดการโกงสำเร็จ)</span>';
+        });
+      }
+
+      // 5. Killswitch toggle (Slide 11)
+      const demoKillswitchCard = document.getElementById('demo-killswitch-card');
+      const demoKillswitchTitle = document.getElementById('demo-killswitch-title');
+      const demoKillswitchStatus = document.getElementById('demo-killswitch-status');
+      const demoKillswitchTrack = document.getElementById('demo-killswitch-track');
+      const demoStorePreview = document.getElementById('demo-store-preview');
+      const demoStoreIcon = document.getElementById('demo-store-icon');
+      const demoStoreTitle = document.getElementById('demo-store-title');
+      const demoStoreDesc = document.getElementById('demo-store-desc');
+      const demoStoreBtn = document.getElementById('demo-store-btn');
+      let killswitchActive = true;
+
+      if (demoKillswitchCard) {
+        demoKillswitchCard.addEventListener('click', () => {
+          killswitchActive = !killswitchActive;
+          if (killswitchActive) {
+            demoKillswitchCard.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+            demoKillswitchTitle.textContent = 'สวิตช์: ร้านเต็มชั่วคราว (ON)';
+            demoKillswitchStatus.textContent = 'กำลังทำงาน (ปิดรับออเดอร์ใหม่)';
+            demoKillswitchStatus.style.color = 'var(--status-danger)';
+            demoKillswitchTrack.style.background = 'var(--status-danger)';
+            demoKillswitchTrack.style.justifyContent = 'flex-end';
+            demoKillswitchTrack.style.boxShadow = '0 0 12px rgba(239, 68, 68, 0.4)';
+
+            demoStorePreview.style.background = 'rgba(245, 158, 11, 0.08)';
+            demoStorePreview.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+            demoStoreIcon.textContent = '🏮';
+            demoStoreTitle.textContent = 'ขณะนี้โต๊ะในร้านเต็มชั่วคราว';
+            demoStoreTitle.style.color = 'var(--neon-gold)';
+            demoStoreDesc.textContent = 'เพื่อความปลอดภัยและพื้นที่ในร้าน ระบบหยุดรับออเดอร์ใหม่ชั่วคราว โปรดรอสักครู่เมื่อมีลูกค้าเช็คบิล';
+            demoStoreBtn.textContent = 'ปุ่มสั่งซื้อบัตรถูกปิดชั่วคราว';
+            demoStoreBtn.style.background = '#374151';
+            demoStoreBtn.style.color = '#9CA3AF';
+            demoStoreBtn.style.cursor = 'not-allowed';
+            demoStoreBtn.disabled = true;
+          } else {
+            demoKillswitchCard.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+            demoKillswitchTitle.textContent = 'สวิตช์: ร้านเปิดรับคำสั่งซื้อ (OFF)';
+            demoKillswitchStatus.textContent = 'ระบบเปิดขายบัตรออนไลน์ตามปกติ';
+            demoKillswitchStatus.style.color = 'var(--status-success)';
+            demoKillswitchTrack.style.background = 'var(--status-success)';
+            demoKillswitchTrack.style.justifyContent = 'flex-start';
+            demoKillswitchTrack.style.boxShadow = '0 0 12px rgba(16, 185, 129, 0.4)';
+
+            demoStorePreview.style.background = 'rgba(16, 185, 129, 0.08)';
+            demoStorePreview.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+            demoStoreIcon.textContent = '🟢';
+            demoStoreTitle.textContent = 'เปิดรับคำสั่งซื้อบัตรตามปกติ';
+            demoStoreTitle.style.color = 'var(--status-success)';
+            demoStoreDesc.textContent = 'โต๊ะว่างแล้ว! ผู้เข้าร่วมงานสามารถกดสั่งซื้อบัตรออนไลน์ (ใบละ 49฿) และรับตั๋ว QR Code ได้ทันที';
+            demoStoreBtn.textContent = 'สั่งซื้อบัตรคอนเสิร์ต (เปิดขายปกติ)';
+            demoStoreBtn.style.background = 'linear-gradient(135deg, var(--brand-red), #6d1421)';
+            demoStoreBtn.style.color = '#fff';
+            demoStoreBtn.style.cursor = 'pointer';
+            demoStoreBtn.disabled = false;
+          }
+        });
+      }
+
+      // 6. Walkup POS interactive (Slide 12)
+      let walkupQty = 2;
+      const walkupBtns = document.querySelectorAll('.walkup-qty-btn');
+      const walkupTotalEl = document.getElementById('demo-walkup-total');
+      const payCashBtn = document.getElementById('demo-pay-cash');
+      const payQrBtn = document.getElementById('demo-pay-qr');
+      const walkupCheckoutBtn = document.getElementById('demo-btn-walkup-checkout');
+      const walkupFeedback = document.getElementById('demo-walkup-feedback');
+
+      walkupBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          walkupBtns.forEach(b => {
+            b.classList.remove('active');
+            b.style.background = 'var(--surface-2)';
+            b.style.borderColor = 'var(--border-hairline)';
+            b.style.color = '#fff';
+            b.style.fontWeight = '400';
+          });
+          e.currentTarget.classList.add('active');
+          e.currentTarget.style.background = 'var(--neon-gold)';
+          e.currentTarget.style.borderColor = 'var(--neon-gold)';
+          e.currentTarget.style.color = '#000';
+          e.currentTarget.style.fontWeight = '700';
+          walkupQty = parseInt(e.currentTarget.getAttribute('data-qty'), 10);
+          walkupTotalEl.textContent = `${(walkupQty * 49).toFixed(2)} บาท`;
+        });
+      });
+
+      if (payCashBtn && payQrBtn) {
+        payCashBtn.addEventListener('click', () => {
+          payCashBtn.style.border = '2px solid var(--neon-gold)';
+          payCashBtn.style.background = 'rgba(245, 158, 11, 0.1)';
+          payCashBtn.querySelector('div:last-child').style.color = 'var(--neon-gold)';
+
+          payQrBtn.style.border = '1px solid var(--border-hairline)';
+          payQrBtn.style.background = 'var(--surface-2)';
+          payQrBtn.querySelector('div:last-child').style.color = 'var(--text-muted)';
+        });
+
+        payQrBtn.addEventListener('click', () => {
+          payQrBtn.style.border = '2px solid var(--neon-gold)';
+          payQrBtn.style.background = 'rgba(245, 158, 11, 0.1)';
+          payQrBtn.querySelector('div:last-child').style.color = 'var(--neon-gold)';
+
+          payCashBtn.style.border = '1px solid var(--border-hairline)';
+          payCashBtn.style.background = 'var(--surface-2)';
+          payCashBtn.querySelector('div:last-child').style.color = 'var(--text-muted)';
+        });
+      }
+
+      if (walkupCheckoutBtn) {
+        walkupCheckoutBtn.addEventListener('click', (e) => {
+          e.currentTarget.blur();
+          walkupFeedback.style.display = 'block';
+          walkupFeedback.textContent = `✓ สำเร็จ! บันทึกยอด ${(walkupQty * 49).toFixed(2)}฿ & เช็คอินมอบ Wristband เรียบร้อย`;
+          setTimeout(() => { walkupFeedback.style.display = 'none'; }, 3000);
+        });
+      }
+
+      // Initial execution
+      initializeNavigationUI();
+      goToSlide(1);
+      updateSpeakerNotes();
+    })();
+  </script>
+</body>
+</html>

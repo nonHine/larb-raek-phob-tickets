@@ -30,3 +30,7 @@ next-env.d.ts
 
 # Exported Customer Data (PDPA)
 /exports/
+
+desktop.ini
+icon.ico
+
